@@ -225,35 +225,20 @@ function showHoldScreen() {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         
-
-    if (gameState.deck.length > 0) {
-        nextPlayer.hand.push(gameState.deck.pop());
+        if (gameState.deck.length > 0) {
+            nextPlayer.hand.push(gameState.deck.pop());
         }
-        
+            
         renderBoard();
         renderHand();
-        
+            
         if (nextPlayer.isAI) {
             checkAITurn();
         }
         return;
     }
-    
-    // If it's the AI's turn, bypass the hold screen and execute automation
-    if (gameState.isSinglePlayer && nextPlayer.isAI) {
-        document.getElementById('hold-screen').classList.add('hidden');
-        document.getElementById('game-container').classList.remove('hidden');
-        
-        if (gameState.deck.length > 0) {
-            nextPlayer.hand.push(gameState.deck.pop());
-        }
-        renderBoard();
-        renderHand();
-        checkAITurn();
-        return;
-    }
 
-    // Human turn handling
+    // Human-only turn handling (Multiplayer device passing)
     document.getElementById('game-container').classList.add('hidden');
     document.getElementById('hold-screen').classList.remove('hidden');
     document.getElementById('next-player-notice').textContent = `${nextPlayer.name}'s Turn`;
@@ -267,7 +252,12 @@ function setupWinControls() {
         const previousFirstPlayer = gameState.players.shift();
         gameState.players.push(previousFirstPlayer);
 
-        // Pass existing player objects (with preserved scores!) into initGame
+        // If tournament finished (or casual mode), reset everyone's score to 0!
+        if (gameState.isTournamentOver || gameState.gameMode !== 'tournament') {
+            gameState.players.forEach(p => p.score = 0);
+        }
+
+        // Pass existing player objects into initGame
         initGame(null, gameState.players);
         renderBoard();
         
@@ -283,9 +273,11 @@ function setupWinControls() {
 
 function showWinScreen(winnerName) {
     document.getElementById('game-container').classList.add('hidden');
-    document.getElementById('winner-display').textContent = `${winnerName} Wins the Hand!`;
     
-    // --- NEW: SCORING WIRE-UP ---
+    // Default heading for a single hand
+    const winnerDisplay = document.getElementById('winner-display');
+    winnerDisplay.textContent = `${winnerName} Wins the Hand!`;
+    
     const scoreContainer = document.getElementById('round-scores');
     let html = `
         <table class="score-table">
@@ -298,6 +290,7 @@ function showWinScreen(winnerName) {
             </thead>
             <tbody>`;
             
+    // 1. Calculate and apply scores
     gameState.players.forEach(player => {
         const handPenalty = calculateHandScore(player.hand);
         player.score = (player.score || 0) + handPenalty;
@@ -310,28 +303,45 @@ function showWinScreen(winnerName) {
                 <td><strong>${player.score} pts</strong></td>
             </tr>`;
     });
-    
     html += `</tbody></table>`;
+    
+    // 2. Determine Button Text & Tournament Winner Logic
+    const playAgainBtn = document.getElementById('play-again-btn');
+    const TOURNAMENT_LIMIT = 100; // Point ceiling to trigger end of tournament
+    let isTournamentOver = false;
+
     if (gameState.gameMode === 'tournament') {
-        html += `<p style="font-size: 0.8rem; margin-top: 8px; opacity: 0.8;">*Tournament Mode: Lowest total score wins overall!</p>`;
+        // Check if anyone has reached or exceeded the limit
+        const maxScore = Math.max(...gameState.players.map(p => p.score));
+        
+        if (maxScore >= TOURNAMENT_LIMIT) {
+            isTournamentOver = true;
+            // Find the player with the LOWEST score to crown Grand Champion
+            const grandChamp = [...gameState.players].sort((a, b) => a.score - b.score)[0];
+            winnerDisplay.innerHTML = `🏆 Tournament Complete! 🏆<br><span style="font-size: 1.2rem; color: var(--gold);">${grandChamp.name} is the Grand Champion!</span>`;
+            playAgainBtn.textContent = "Start New Tournament 🏆";
+            html += `<p style="font-size: 0.85rem; margin-top: 8px; color: #ffeb3b;">*Someone hit ${TOURNAMENT_LIMIT} points! Lowest total score wins the tournament!*</p>`;
+        } else {
+            playAgainBtn.textContent = "Deal Next Hand 🔀";
+            html += `<p style="font-size: 0.8rem; margin-top: 8px; opacity: 0.8;">*Tournament Mode: Playing until someone reaches ${TOURNAMENT_LIMIT} points.*</p>`;
+        }
+    } else {
+        // Casual Mode default
+        playAgainBtn.textContent = "Play Again 🔄";
     }
     
+    // Save state flag so win controls know whether to reset scores or not
+    gameState.isTournamentOver = isTournamentOver;
+    
     if (scoreContainer) scoreContainer.innerHTML = html;
-    // ----------------------------
-
     document.getElementById('win-screen').classList.remove('hidden');
     
     triggerHaptic([100, 50, 100, 50, 200]);
-
     if (typeof confetti === 'function') {
-        confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-        });
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
     }
     
-    localStorage.removeItem('kingsCornerSave'); // Clean up saved game on win
+    localStorage.removeItem('kingsCornerSave');
 }
 
 // --- 7. Rendering Functions ---

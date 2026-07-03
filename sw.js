@@ -1,7 +1,7 @@
 // sw.js - Service Worker with Offline Caching for Sounds & Images
 
 // BUMP THE VERSION! This forces the browser to re-cache everything.
-const CACHE_NAME = 'kings-corner-v2'; 
+const CACHE_NAME = 'kings-corner-v2.1'; 
 
 const ASSETS = [
     './',
@@ -24,7 +24,6 @@ const ASSETS = [
     // --- NEW: App Icons (Adjust filenames to match what you put in the folder) ---
     './images/icon-192.png',
     './images/icon-512.png',
-    './images/apple-touch-icon.png'
 ];
 
 // 1. Install Event: Download and cache all assets

@@ -143,7 +143,7 @@ function setupThemeSwitcher() {
     });
 }
     
-    // Check for existing saved game
+    setupThemeSwitcher();
     loadGame();
 });
 
@@ -423,7 +423,7 @@ function makeDraggable(element, dragData) {
             cardObj = gameState.players[gameState.currentPlayerIndex].hand[dragData.cardIndex];
         } else if (dragData.type === 'pile') {
             const pile = gameState.board[dragData.pileKey];
-            cardObj = pile[pile.length - 1];
+            cardObj = pile[0]; // Change from pile[pile.length - 1] to pile[0]
         }
 
         activeDrag = {
@@ -502,7 +502,7 @@ function onPointerUp(e) {
         if (targetPile.length === 0 && isCorner && activeDrag.card.value !== 'K') {
             console.log("Only Kings can be placed in empty corner piles!");
         } 
-        else if (targetPile.length === 0 && !isCorner && activeDrag.data.type === 'hand') {
+        else if (targetPile.length === 0 && !isCorner) {
             executeMove(targetPileKey);
         }
         else if (isValidMove(activeDrag.card, targetPile)) {

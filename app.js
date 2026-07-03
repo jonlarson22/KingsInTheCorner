@@ -96,7 +96,6 @@ function initGame(playersData, existingPlayers = null) {
     };
     
     gameState.gameStarted = true;
-    SoundManager.play('draw'); // SOUND: Initial deal sound
     console.log("Round initialized! Players:", gameState.players);
 }
 
@@ -238,7 +237,11 @@ function setupGameScreen() {
             gameState.gameMode = document.getElementById('game-mode').value;
             gameState.tournamentLimit = parseInt(document.getElementById('tournament-limit').value, 10); 
             gameState.undoEnabled = document.getElementById('enable-undo').checked;
-        
+
+            if (gameState.isSinglePlayer && playersData.length === 1) {
+                playersData.push({ name: 'Robo-King', icon: '🤖' });
+            }
+            
             initGame(playersData);
         
             const undoBtn = document.getElementById('undo-btn');
@@ -280,10 +283,12 @@ function setupTurnManagement() {
 function showHoldScreen() {
     const nextPlayer = gameState.players[gameState.currentPlayerIndex];
 
+    // --- SINGLE PLAYER MODE HANDLING ---
     if (gameState.isSinglePlayer) {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         
+        // Draw card at the start of ANY turn in single player
         if (gameState.deck.length > 0) {
             nextPlayer.hand.push(gameState.deck.pop());
             SoundManager.play('draw'); // SOUND: Deal card in 1-player mode
@@ -292,17 +297,17 @@ function showHoldScreen() {
         renderBoard();
         renderHand();
             
+        // If the turn just shifted to the AI, let it think!
         if (nextPlayer.isAI) {
             checkAITurn();
         }
         return;
     }
 
-    // Human-only turn handling (Multiplayer device passing)
+    // --- MULTIPLAYER MODE HANDLING (Human device passing) ---
     document.getElementById('game-container').classList.add('hidden');
     document.getElementById('hold-screen').classList.remove('hidden');
     
-    // NEW: Display large icon on the turn indicator screen!
     const noticeEl = document.getElementById('next-player-notice');
     noticeEl.innerHTML = `
         <div style="font-size: 4rem; margin-bottom: 10px; line-height: 1;">${nextPlayer.icon}</div>

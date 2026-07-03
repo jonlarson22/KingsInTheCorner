@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Kings In The Corner</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+    <div id="hold-screen" class="modal">
+        <div class="modal-content">
+            <h2 id="next-player-notice">Player 1's Turn</h2>
+            <p>Pass the device to the next player.</p>
+            <button id="start-turn-btn" class="btn primary">Start Turn (Draw Card)</button>
+        </div>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <header class="game-header">
+            <h3 id="current-player-display">Player 1</h3>
+            <div class="controls">
+                <button id="end-turn-btn" class="btn">End Turn</button>
+            </div>
+        </header>
+
+        <main class="board-grid">
+            <div class="pile corner" data-pile="nw" id="pile-nw"><span class="pile-label">K</span></div>
+            <div class="pile standard" data-pile="north" id="pile-north"></div>
+            <div class="pile corner" data-pile="ne" id="pile-ne"><span class="pile-label">K</span></div>
+            
+            <div class="pile standard" data-pile="west" id="pile-west"></div>
+            <div class="center-deck" id="center-deck">
+                <div class="card back">DECK<br><span id="deck-count">0</span></div>
+            </div>
+            <div class="pile standard" data-pile="east" id="pile-east"></div>
+            
+            <div class="pile corner" data-pile="sw" id="pile-sw"><span class="pile-label">K</span></div>
+            <div class="pile standard" data-pile="south" id="pile-south"></div>
+            <div class="pile corner" data-pile="se" id="pile-se"><span class="pile-label">K</span></div>
+        </main>
+
+        <footer class="hand-container">
+            <div id="player-hand" class="hand"></div>
+        </footer>
+    </div>
+
+    <div id="drag-ghost" class="card hidden"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

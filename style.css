@@ -177,3 +177,40 @@ body {
     transform: translate(-50%, -50%) scale(1.05);
     box-shadow: 0 8px 20px rgba(0,0,0,0.5);
 }
+
+/* Form Controls for Setup Screen */
+.form-group {
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.input-control {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: none;
+    background: #f1f8e9;
+    color: #1b5e20;
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.input-control:focus {
+    outline: 3px solid #ffb300;
+}
+
+#name-inputs-container {
+    margin-bottom: 1.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+}

@@ -211,8 +211,11 @@ body {
 
 #name-inputs-container {
     margin-bottom: 1.5rem;
-    max-height: 200px;
+    max-height: 350px; /* Increased from 200px to fit 4 players comfortably */
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Keeps name inputs cleanly spaced */
 }
 
 /* Win Screen Styling */

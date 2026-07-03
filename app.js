@@ -178,6 +178,25 @@ function setupTurnManagement() {
 
 function showHoldScreen() {
     const nextPlayer = gameState.players[gameState.currentPlayerIndex];
+
+    // If it's a 1-Player game, skip the pass screen entirely for EVERYONE
+    if (gameState.isSinglePlayer) {
+        document.getElementById('hold-screen').classList.add('hidden');
+        document.getElementById('game-container').classList.remove('hidden');
+        
+        const nextPlayer = gameState.players[gameState.currentPlayerIndex];
+        if (gameState.deck.length > 0) {
+            nextPlayer.hand.push(gameState.deck.pop());
+        }
+        
+        renderBoard();
+        renderHand();
+        
+        if (nextPlayer.isAI) {
+            checkAITurn();
+        }
+        return;
+    }
     
     // If it's the AI's turn, bypass the hold screen and execute automation
     if (gameState.isSinglePlayer && nextPlayer.isAI) {
@@ -554,4 +573,12 @@ if ('serviceWorker' in navigator) {
             .then(reg => console.log('Service Worker registered!', reg))
             .catch(err => console.error('Service Worker registration failed', err));
     });
+}
+
+function calculateHandScore(hand) {
+    return hand.reduce((total, card) => {
+        if (['K', 'Q', 'J'].includes(card.value)) return total + 10;
+        if (card.value === 'A') return total + 1;
+        return total + parseInt(card.value, 10);
+    }, 0);
 }

@@ -1,0 +1,179 @@
+:root {
+    --bg-green: #1b5e20;
+    --card-width: 70px;
+    --card-height: 100px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body {
+    background-color: var(--bg-green);
+    color: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Modal / Hold Screen */
+.modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #2e7d32;
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.modal-content h2 { margin-bottom: 1rem; font-size: 2rem; }
+.modal-content p { margin-bottom: 1.5rem; font-size: 1.1rem; opacity: 0.9; }
+
+/* Buttons */
+.btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 6px;
+    background: #f1f8e9;
+    color: #1b5e20;
+    font-weight: bold;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.btn.primary { background: #ffb300; color: #000; }
+
+/* Main Layout */
+#game-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 10px;
+}
+
+.hidden { display: none !important; }
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 15px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+/* 3x3 Board Grid */
+.board-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 10px;
+    flex-grow: 1;
+    max-width: 500px;
+    max-height: 500px;
+    margin: 0 auto;
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+.pile {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.pile.corner { background: rgba(0, 0, 0, 0.15); }
+.pile-label { font-size: 2rem; font-weight: bold; opacity: 0.2; position: absolute; }
+
+.center-deck {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Card Styling */
+.card {
+    width: var(--card-width);
+    height: var(--card-height);
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 4px 6px;
+    font-weight: bold;
+    font-size: 1rem;
+    position: absolute;
+    cursor: grab;
+    touch-action: none; /* Crucial for custom Pointer Events */
+}
+
+.card.red { color: #d32f2f; }
+.card.black { color: #212121; }
+.card.back {
+    background: #1565c0;
+    color: white;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-size: 0.8rem;
+    border: 2px solid white;
+}
+
+.card-top-left { align-self: flex-start; line-height: 1; }
+.card-center { align-self: center; font-size: 1.5rem; }
+.card-bottom-right { align-self: flex-end; line-height: 1; transform: rotate(180deg); }
+
+/* Overlapping Cards on Piles */
+.pile .card { position: absolute; }
+
+/* Hand Container */
+.hand-container {
+    height: 130px;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    padding: 10px 0;
+}
+
+.hand {
+    display: flex;
+    gap: 8px;
+    margin: 0 auto;
+    padding: 0 10px;
+}
+
+.hand .card {
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* Drag Ghost */
+#drag-ghost {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(1.05);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+}

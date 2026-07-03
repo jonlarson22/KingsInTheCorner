@@ -100,6 +100,20 @@ window.addEventListener('DOMContentLoaded', () => {
     
     // Bind Undo Button
     document.getElementById('undo-btn').addEventListener('click', performUndo);
+
+    document.getElementById('quit-btn').addEventListener('click', () => {
+    if (confirm("Are you sure you want to quit the current game?")) {
+        // 1. Wipe the saved game from storage
+        localStorage.removeItem('kingsCornerSave');
+        
+        // 2. Reset game state
+        gameState.gameStarted = false;
+        
+        // 3. Hide game board and show setup screen
+        document.getElementById('game-container').classList.add('hidden');
+        document.getElementById('setup-screen').classList.remove('hidden');
+    }
+});
     
     // Check for existing saved game
     loadGame();
@@ -135,7 +149,8 @@ function setupGameScreen() {
             });
 
             // Read options from setup screen
-            gameState.isSinglePlayer = (document.getElementById('game-mode').value === 'ai');
+            gameState.isSinglePlayer = (document.getElementById('player-count').value === '1');
+            gameState.gameMode = document.getElementById('game-mode').value; // Save casual vs tournament
             gameState.undoEnabled = document.getElementById('enable-undo').checked;
 
             initGame(playerNames);
@@ -184,9 +199,9 @@ function showHoldScreen() {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         
-        const nextPlayer = gameState.players[gameState.currentPlayerIndex];
-        if (gameState.deck.length > 0) {
-            nextPlayer.hand.push(gameState.deck.pop());
+
+    if (gameState.deck.length > 0) {
+        nextPlayer.hand.push(gameState.deck.pop());
         }
         
         renderBoard();

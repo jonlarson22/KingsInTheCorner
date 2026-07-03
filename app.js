@@ -3,18 +3,28 @@
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
-// Global Game State
+// Add to your Global Game State
 let gameState = {
     deck: [],
     players: [],
     currentPlayerIndex: 0,
-    // 4 standard cross piles (N, E, S, W) and 4 corner piles (NW, NE, SE, SW)
     board: {
         north: [], east: [], south: [], west: [],
         nw: [], ne: [], se: [], sw: []
     },
-    gameStarted: false
+    gameStarted: false,
+    // NEW: Feature tracking
+    isSinglePlayer: false,
+    undoEnabled: true,
+    history: [] // Stores state snapshots for Undo
 };
+
+// Haptic Feedback Helper
+function triggerHaptic(ms = 15) {
+    if ('vibrate' in navigator) {
+        try { navigator.vibrate(ms); } catch (e) {}
+    }
+}
 
 // 1. Initialize the Game
 function initGame(playerNames) {
@@ -201,6 +211,20 @@ function showWinScreen(winnerName) {
     document.getElementById('game-container').classList.add('hidden');
     document.getElementById('winner-display').textContent = `${winnerName} Wins!`;
     document.getElementById('win-screen').classList.remove('hidden');
+    
+    // Trigger Haptic pulse
+    triggerHaptic([100, 50, 100, 50, 200]);
+
+    // Fire Confetti!
+    if (typeof confetti === 'function') {
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
+    }
+    
+    localStorage.removeItem('kingsCornerSave'); // Clear save on game over
 }
 
 // 8. Rendering Functions
@@ -287,6 +311,32 @@ function makeDraggable(element, dragData) {
     });
 }
 
+// Add inside makeDraggable() right after setting activeDrag:
+function highlightValidMoves(cardObj, dragType) {
+    for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
+        const pileEl = document.getElementById(`pile-${pileKey}`);
+        const isCorner = ['nw', 'ne', 'se', 'sw'].includes(pileKey);
+        
+        let isValid = false;
+        if (pileArray.length === 0) {
+            // Empty corners take Kings; empty standards take ANY hand card
+            if (isCorner && cardObj.value === 'K') isValid = true;
+            else if (!isCorner && dragType === 'hand') isValid = true;
+        } else if (isValidMove(cardObj, pileArray)) {
+            isValid = true;
+        }
+
+        if (isValid) pileEl.classList.add('valid-target');
+    }
+}
+
+// Helper to clear highlights on drop
+function clearHighlights() {
+    document.querySelectorAll('.valid-target').forEach(el => {
+        el.classList.remove('valid-target');
+    });
+}
+
 function onPointerMove(e) {
     if (!activeDrag) return;
     const ghost = document.getElementById('drag-ghost');
@@ -358,4 +408,138 @@ if ('serviceWorker' in navigator) {
             .then(reg => console.log('Service Worker registered!', reg))
             .catch(err => console.error('Service Worker registration failed', err));
     });
+}
+
+// --- Auto-Save & LocalStorage ---
+function saveGame() {
+    if (!gameState.gameStarted) return;
+    try {
+        // We don't save the history stack to keep localStorage lightweight
+        const stateToSave = { ...gameState, history: [] };
+        localStorage.setItem('kingsCornerSave', JSON.stringify(stateToSave));
+    } catch (e) { console.warn("Could not save game to localStorage", e); }
+}
+
+function loadGame() {
+    const saved = localStorage.getItem('kingsCornerSave');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            if (parsed.gameStarted) {
+                if (confirm("Resume saved game?")) {
+                    gameState = parsed;
+                    gameState.history = []; // Reset undo stack on reload
+                    document.getElementById('setup-screen').classList.add('hidden');
+                    if (gameState.undoEnabled) {
+                        document.getElementById('undo-btn').classList.remove('hidden');
+                    }
+                    renderBoard();
+                    renderHand();
+                    
+                    // If resuming into AI turn, trigger it
+                    checkAITurn();
+                    return true;
+                } else {
+                    localStorage.removeItem('kingsCornerSave');
+                }
+            }
+        } catch (e) { localStorage.removeItem('kingsCornerSave'); }
+    }
+    return false;
+}
+
+// --- Undo System ---
+function saveSnapshot() {
+    if (!gameState.undoEnabled) return;
+    // Deep copy current state without the history array itself
+    const snapshot = JSON.parse(JSON.stringify({
+        deck: gameState.deck,
+        players: gameState.players,
+        currentPlayerIndex: gameState.currentPlayerIndex,
+        board: gameState.board
+    }));
+    gameState.history.push(snapshot);
+    // Limit history to last 15 moves to prevent memory bloat
+    if (gameState.history.length > 15) gameState.history.shift();
+}
+
+function performUndo() {
+    if (gameState.history.length === 0) return;
+    const previousState = gameState.history.pop();
+    
+    gameState.deck = previousState.deck;
+    gameState.players = previousState.players;
+    gameState.currentPlayerIndex = previousState.currentPlayerIndex;
+    gameState.board = previousState.board;
+    
+    triggerHaptic(20);
+    renderBoard();
+    renderHand();
+    saveGame();
+}
+
+function checkAITurn() {
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (!gameState.isSinglePlayer || !currentPlayer.isAI) return;
+
+    // Show AI status on header
+    document.getElementById('current-player-display').textContent = `${currentPlayer.name} (Thinking...)`;
+    document.getElementById('end-turn-btn').disabled = true;
+
+    setTimeout(() => {
+        executeAIMoves();
+    }, 800);
+}
+
+function executeAIMoves() {
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    let madeMove = false;
+
+    // 1. Try to play cards from hand
+    for (let i = 0; i < currentPlayer.hand.length; i++) {
+        const card = currentPlayer.hand[i];
+        
+        for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
+            const isCorner = ['nw', 'ne', 'se', 'sw'].includes(pileKey);
+            let legal = false;
+
+            if (pileArray.length === 0) {
+                if (isCorner && card.value === 'K') legal = true;
+                else if (!isCorner) legal = true;
+            } else if (isValidMove(card, pileArray)) {
+                legal = true;
+            }
+
+            if (legal) {
+                saveSnapshot();
+                currentPlayer.hand.splice(i, 1);
+                gameState.board[pileKey].push(card);
+                triggerHaptic(10);
+                renderBoard();
+                renderHand();
+                madeMove = true;
+                break;
+            }
+        }
+        if (madeMove) break; // Execute one move at a time for visual clarity
+    }
+
+    // 2. Check Win Condition
+    if (currentPlayer.hand.length === 0) {
+        showWinScreen(currentPlayer.name);
+        return;
+    }
+
+    // 3. If a move was made, pause and check for chain moves!
+    if (madeMove) {
+        setTimeout(executeAIMoves, 600);
+    } else {
+        // No valid moves left -> End AI Turn
+        setTimeout(() => {
+            document.getElementById('end-turn-btn').disabled = false;
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+            saveGame();
+            showHoldScreen();
+        }, 500);
+    }
 }

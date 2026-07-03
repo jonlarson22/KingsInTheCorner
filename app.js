@@ -15,8 +15,10 @@ let gameState = {
     },
     gameStarted: false,
     isSinglePlayer: false,
+    gameMode: 'casual',
+    tournamentLimit: 100, // NEW: Defaults to 100
     undoEnabled: true,
-    history: [] // Stores state snapshots for Undo
+    history: []
 };
 
 let activeDrag = null;
@@ -149,6 +151,20 @@ function setupGameScreen() {
     const countSelect = document.getElementById('player-count');
     const container = document.getElementById('name-inputs-container');
 
+    // NEW: Toggle Point Limit Dropdown visibility based on Game Mode selection
+    const gameModeSelect = document.getElementById('game-mode');
+    const limitGroup = document.getElementById('tournament-limit-group');
+
+    if (gameModeSelect && limitGroup) {
+        gameModeSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'tournament') {
+                limitGroup.classList.remove('hidden');
+            } else {
+                limitGroup.classList.add('hidden');
+            }
+        });
+    }
+
     const renderInputFields = (count) => {
         container.innerHTML = '';
         for (let i = 1; i <= count; i++) {
@@ -173,19 +189,22 @@ function setupGameScreen() {
             const playerNames = Array.from(nameInputs).map((input, index) => {
                 return input.value.trim() || `Player ${index + 1}`;
             });
-
+        
             // Read options from setup screen
             gameState.isSinglePlayer = (document.getElementById('player-count').value === '1');
-            gameState.gameMode = document.getElementById('game-mode').value; // Save casual vs tournament
+            gameState.gameMode = document.getElementById('game-mode').value;
+            
+            // NEW: Parse the selected point limit as an integer
+            gameState.tournamentLimit = parseInt(document.getElementById('tournament-limit').value, 10); 
+            
             gameState.undoEnabled = document.getElementById('enable-undo').checked;
-
+        
             initGame(playerNames);
-
-            // Toggle Undo button visibility
+        
             const undoBtn = document.getElementById('undo-btn');
             if (gameState.undoEnabled) undoBtn.classList.remove('hidden');
             else undoBtn.classList.add('hidden');
-
+        
             renderBoard();
             document.getElementById('setup-screen').classList.add('hidden');
             showHoldScreen();
@@ -271,6 +290,7 @@ function setupWinControls() {
     });
 }
 
+// --- 6. Win Screen & Round Rotation Controls (Updated showWinScreen) ---
 function showWinScreen(winnerName) {
     document.getElementById('game-container').classList.add('hidden');
     
@@ -307,7 +327,9 @@ function showWinScreen(winnerName) {
     
     // 2. Determine Button Text & Tournament Winner Logic
     const playAgainBtn = document.getElementById('play-again-btn');
-    const TOURNAMENT_LIMIT = 100; // Point ceiling to trigger end of tournament
+    
+    // NEW: Dynamically grab the point ceiling chosen on the setup screen!
+    const TOURNAMENT_LIMIT = gameState.tournamentLimit || 100; 
     let isTournamentOver = false;
 
     if (gameState.gameMode === 'tournament') {

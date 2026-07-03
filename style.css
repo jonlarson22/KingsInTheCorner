@@ -214,3 +214,31 @@ body {
     max-height: 200px;
     overflow-y: auto;
 }
+
+/* Win Screen Styling */
+.win-content {
+    border: 3px solid #ffb300;
+    background: linear-gradient(135deg, #1b5e20, #2e7d32);
+    max-width: 400px;
+    width: 90%;
+}
+
+.win-content h1 {
+    font-size: 2.5rem;
+    color: #ffb300;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.win-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 2rem;
+}
+
+.win-actions .btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.1rem;
+}

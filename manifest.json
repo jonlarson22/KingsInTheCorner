@@ -1,0 +1,21 @@
+{
+  "name": "Kings In The Corner",
+  "short_name": "KingsCorner",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1b5e20",
+  "theme_color": "#1b5e20",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192/2e7d32/ffffff?text=K",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512/2e7d32/ffffff?text=K",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-// app.js - Phase 1: Game State & Logic
+// app.js - Complete Game Logic, PWA Flow, & UI Management
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -42,7 +42,7 @@ function initGame(playerNames) {
     };
     
     gameState.gameStarted = true;
-    console.log("Game initialized!", gameState);
+    console.log("Game initialized with turn order:", gameState.players.map(p => p.name));
 }
 
 // 2. Helper: Create a Standard 52-Card Deck
@@ -71,7 +71,6 @@ function isValidMove(card, targetPile) {
     // If the pile is empty
     if (targetPile.length === 0) {
         // Kings can ONLY go into empty corners (NW, NE, SE, SW)
-        // (We will handle checking if the pile is a corner in the UI layer)
         return card.value === 'K';
     }
     
@@ -88,10 +87,11 @@ function isValidMove(card, targetPile) {
 
 let activeDrag = null;
 
-// 5. Initialize UI & Setup Screen on Load
+// 5. Initialize UI & Screens on Load
 window.addEventListener('DOMContentLoaded', () => {
     setupGameScreen();
     setupTurnManagement();
+    setupWinControls();
 });
 
 function setupGameScreen() {
@@ -112,28 +112,30 @@ function setupGameScreen() {
     };
 
     // Initial render for 2 players
-    renderInputFields(parseInt(countSelect.value));
+    if (countSelect && container) {
+        renderInputFields(parseInt(countSelect.value));
 
-    // Listen for dropdown changes
-    countSelect.addEventListener('change', (e) => {
-        renderInputFields(parseInt(e.target.value));
-    });
-
-    // Start Game Button Click
-    document.getElementById('start-game-btn').addEventListener('click', () => {
-        const nameInputs = document.querySelectorAll('.player-name-input');
-        const playerNames = Array.from(nameInputs).map((input, index) => {
-            // Fallback to "Player X" if they left the field blank
-            return input.value.trim() || `Player ${index + 1}`;
+        // Listen for dropdown changes
+        countSelect.addEventListener('change', (e) => {
+            renderInputFields(parseInt(e.target.value));
         });
 
-        initGame(playerNames);
-        renderBoard();
-        
-        // Hide setup, show the first player's hold screen
-        document.getElementById('setup-screen').classList.add('hidden');
-        showHoldScreen();
-    });
+        // Start Game Button Click
+        document.getElementById('start-game-btn').addEventListener('click', () => {
+            const nameInputs = document.querySelectorAll('.player-name-input');
+            const playerNames = Array.from(nameInputs).map((input, index) => {
+                // Fallback to "Player X" if they left the field blank
+                return input.value.trim() || `Player ${index + 1}`;
+            });
+
+            initGame(playerNames);
+            renderBoard();
+            
+            // Hide setup, show the first player's hold screen
+            document.getElementById('setup-screen').classList.add('hidden');
+            showHoldScreen();
+        });
+    }
 }
 
 // 6. View Switching & Turn Management
@@ -171,7 +173,37 @@ function showHoldScreen() {
     document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayerName}. Tap below when ready!`;
 }
 
-// 7. Rendering Functions
+// 7. Win Screen & Round Rotation Controls
+function setupWinControls() {
+    // Play again with the same players, but ROTATE starting order for fairness!
+    document.getElementById('play-again-btn').addEventListener('click', () => {
+        let currentNames = gameState.players.map(p => p.name);
+        
+        // Rotate: Move the person who went first this round to the end of the line
+        const previousFirstPlayer = currentNames.shift();
+        currentNames.push(previousFirstPlayer);
+
+        initGame(currentNames);
+        renderBoard();
+        
+        document.getElementById('win-screen').classList.add('hidden');
+        showHoldScreen();
+    });
+
+    // Go back to the main setup screen
+    document.getElementById('new-setup-btn').addEventListener('click', () => {
+        document.getElementById('win-screen').classList.add('hidden');
+        document.getElementById('setup-screen').classList.remove('hidden');
+    });
+}
+
+function showWinScreen(winnerName) {
+    document.getElementById('game-container').classList.add('hidden');
+    document.getElementById('winner-display').textContent = `${winnerName} Wins!`;
+    document.getElementById('win-screen').classList.remove('hidden');
+}
+
+// 8. Rendering Functions
 function renderBoard() {
     document.getElementById('deck-count').textContent = gameState.deck.length;
     document.getElementById('current-player-display').textContent = gameState.players[gameState.currentPlayerIndex].name;
@@ -179,7 +211,6 @@ function renderBoard() {
     // Render all 8 piles
     for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
         const pileEl = document.getElementById(`pile-${pileKey}`);
-        // Clear existing rendered cards (keep corner label if empty)
         const label = pileEl.querySelector('.pile-label');
         pileEl.innerHTML = '';
         if (label && pileArray.length === 0) pileEl.appendChild(label);
@@ -221,12 +252,11 @@ function createCardElement(card) {
     return el;
 }
 
-// 8. Universal Touch/Mouse Drag & Drop Logic
+// 9. Universal Touch/Mouse Drag & Drop Logic
 function makeDraggable(element, dragData) {
     element.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         
-        // Identify the exact card object being dragged
         let cardObj;
         if (dragData.type === 'hand') {
             cardObj = gameState.players[gameState.currentPlayerIndex].hand[dragData.cardIndex];
@@ -243,7 +273,6 @@ function makeDraggable(element, dragData) {
             startY: e.clientY
         };
 
-        // Setup Ghost Element for visual drag feedback
         const ghost = document.getElementById('drag-ghost');
         ghost.className = `card ${cardObj.color}`;
         ghost.innerHTML = element.innerHTML;
@@ -268,13 +297,11 @@ function onPointerMove(e) {
 function onPointerUp(e) {
     if (!activeDrag) return;
 
-    // Cleanup drag listeners & UI
     document.removeEventListener('pointermove', onPointerMove);
     document.removeEventListener('pointerup', onPointerUp);
     document.getElementById('drag-ghost').classList.add('hidden');
     activeDrag.element.style.opacity = '1';
 
-    // Identify drop target using collision detection
     const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
     const pileEl = dropTarget ? dropTarget.closest('.pile') : null;
 
@@ -283,15 +310,12 @@ function onPointerUp(e) {
         const targetPile = gameState.board[targetPileKey];
         const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetPileKey);
 
-        // Enforce Corner Rule: Empty corners can ONLY take Kings
         if (targetPile.length === 0 && isCorner && activeDrag.card.value !== 'K') {
             console.log("Only Kings can be placed in empty corner piles!");
         } 
-        // Enforce Standard Rule: Empty standard piles can take ANY card
         else if (targetPile.length === 0 && !isCorner && activeDrag.type === 'hand') {
             executeMove(targetPileKey);
         }
-        // Enforce Rule Validator for occupied piles
         else if (isValidMove(activeDrag.card, targetPile)) {
             executeMove(targetPileKey);
         }
@@ -304,13 +328,11 @@ function executeMove(targetPileKey) {
     const targetPile = gameState.board[targetPileKey];
 
     if (activeDrag.data.type === 'hand') {
-        // Move card from hand to pile
         const hand = gameState.players[gameState.currentPlayerIndex].hand;
         const [playedCard] = hand.splice(activeDrag.data.cardIndex, 1);
         targetPile.push(playedCard);
     } 
     else if (activeDrag.data.type === 'pile') {
-        // Merge piles: Move ALL cards from source pile to target pile
         const sourcePileKey = activeDrag.data.pileKey;
         if (sourcePileKey !== targetPileKey) {
             const cardsToMove = gameState.board[sourcePileKey].splice(0);
@@ -318,10 +340,10 @@ function executeMove(targetPileKey) {
         }
     }
 
-    // Check for Win Condition
+    // Check for Win Condition -> Transition to Win Screen!
     if (gameState.players[gameState.currentPlayerIndex].hand.length === 0) {
-        alert(`${gameState.players[gameState.currentPlayerIndex].name} Wins!`);
-        location.reload();
+        const winningPlayer = gameState.players[gameState.currentPlayerIndex];
+        showWinScreen(winningPlayer.name);
         return;
     }
 
@@ -329,7 +351,7 @@ function executeMove(targetPileKey) {
     renderHand();
 }
 
-// Register PWA Service Worker
+// 10. Register PWA Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')

@@ -2,6 +2,7 @@
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const PLAYER_ICONS = ['👑', '🤖', '🃏', '🦊', '🤠', '🏴‍☠️', '🧙‍♂️', '🥷', '🦁', '🐉', '👾', '🎲'];
 
 // --- Global Game State ---
 let gameState = {
@@ -114,6 +115,22 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('setup-screen').classList.remove('hidden');
     }
 });
+
+function setupThemeSwitcher() {
+    const themeSelect = document.getElementById('theme-select');
+    
+    // Load saved theme if it exists, default to green-felt
+    const savedTheme = localStorage.getItem('kingsCornerTheme') || 'green-felt';
+    document.body.setAttribute('data-theme', savedTheme);
+    themeSelect.value = savedTheme;
+
+    // Listen for changes
+    themeSelect.addEventListener('change', (e) => {
+        const selectedTheme = e.target.value;
+        document.body.setAttribute('data-theme', selectedTheme);
+        localStorage.setItem('kingsCornerTheme', selectedTheme); // Save preference!
+    });
+}
     
     // Check for existing saved game
     loadGame();

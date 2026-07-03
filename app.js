@@ -1,8 +1,32 @@
-// app.js - Complete Game Logic, PWA Flow, AI Bot, Undo, & UI Management
+// app.js - Complete Game Logic, PWA Flow, AI Bot, Undo, Sounds, & UI Management
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const PLAYER_ICONS = ['👑', '🤖', '🃏', '🦊', '🤠', '🏴‍☠️', '🧙‍♂️', '🥷', '🦁', '🐉', '👾', '🎲'];
+
+// --- SOUND: Modular Sound Effects Engine ---
+// Place your audio files inside a './sounds/' folder in your project directory
+const SoundManager = {
+    enabled: true,
+    sounds: {
+        draw: new Audio('./sounds/draw.mp3'),
+        validDrop: new Audio('./sounds/drop-valid.mp3'),
+        invalidDrop: new Audio('./sounds/drop-invalid.mp3'),
+        turn: new Audio('./sounds/turn-notify.mp3'),
+        roundWin: new Audio('./sounds/win-round.mp3'),
+        tournamentWin: new Audio('./sounds/win-tournament.mp3')
+    },
+    play(effectName) {
+        if (!this.enabled || !this.sounds[effectName]) return;
+        try {
+            // Reset time to 0 so fast consecutive sounds overlap cleanly
+            this.sounds[effectName].currentTime = 0;
+            this.sounds[effectName].play().catch(() => {
+                // Silently catches browser autoplay restrictions or missing files
+            });
+        } catch (e) { console.warn("Audio engine error:", e); }
+    }
+};
 
 // --- Global Game State ---
 let gameState = {
@@ -16,7 +40,7 @@ let gameState = {
     gameStarted: false,
     isSinglePlayer: false,
     gameMode: 'casual',
-    tournamentLimit: 100, // NEW: Defaults to 100
+    tournamentLimit: 100,
     undoEnabled: true,
     history: []
 };
@@ -31,11 +55,12 @@ function triggerHaptic(ms = 15) {
 }
 
 // --- 1. Initialize the Game ---
-function initGame(playerNames, existingPlayers = null) {
+// NEW: Changed parameter from playerNames to playersData (array of objects with name and icon)
+function initGame(playersData, existingPlayers = null) {
     gameState.deck = createDeck();
     shuffle(gameState.deck);
     
-    // If resuming/playing another round, keep existing score totals!
+    // If resuming/playing another round, keep existing score totals and icons!
     if (existingPlayers) {
         gameState.players = existingPlayers.map(p => ({
             ...p,
@@ -43,10 +68,11 @@ function initGame(playerNames, existingPlayers = null) {
         }));
     } else {
         // Fresh game setup
-        gameState.players = playerNames.map((name, idx) => ({ 
-            name: name, 
+        gameState.players = playersData.map((data, idx) => ({ 
+            name: data.name, 
+            icon: data.icon || '👤', // NEW: Assign chosen icon
             hand: [],
-            score: 0, // NEW: Initialize cumulative score
+            score: 0,
             isAI: (gameState.isSinglePlayer && idx > 0)
         }));
     }
@@ -70,6 +96,7 @@ function initGame(playerNames, existingPlayers = null) {
     };
     
     gameState.gameStarted = true;
+    SoundManager.play('draw'); // SOUND: Initial deal sound
     console.log("Round initialized! Players:", gameState.players);
 }
 
@@ -110,38 +137,29 @@ window.addEventListener('DOMContentLoaded', () => {
     setupTurnManagement();
     setupWinControls();
     
-    // Bind Undo Button
     document.getElementById('undo-btn').addEventListener('click', performUndo);
 
     document.getElementById('quit-btn').addEventListener('click', () => {
-    if (confirm("Are you sure you want to quit the current game?")) {
-        // 1. Wipe the saved game from storage
-        localStorage.removeItem('kingsCornerSave');
-        
-        // 2. Reset game state
-        gameState.gameStarted = false;
-        
-        // 3. Hide game board and show setup screen
-        document.getElementById('game-container').classList.add('hidden');
-        document.getElementById('setup-screen').classList.remove('hidden');
-    }
-});
-
-function setupThemeSwitcher() {
-    const themeSelect = document.getElementById('theme-select');
-    
-    // Load saved theme if it exists, default to green-felt
-    const savedTheme = localStorage.getItem('kingsCornerTheme') || 'green-felt';
-    document.body.setAttribute('data-theme', savedTheme);
-    themeSelect.value = savedTheme;
-
-    // Listen for changes
-    themeSelect.addEventListener('change', (e) => {
-        const selectedTheme = e.target.value;
-        document.body.setAttribute('data-theme', selectedTheme);
-        localStorage.setItem('kingsCornerTheme', selectedTheme); // Save preference!
+        if (confirm("Are you sure you want to quit the current game?")) {
+            localStorage.removeItem('kingsCornerSave');
+            gameState.gameStarted = false;
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('setup-screen').classList.remove('hidden');
+        }
     });
-}
+
+    function setupThemeSwitcher() {
+        const themeSelect = document.getElementById('theme-select');
+        const savedTheme = localStorage.getItem('kingsCornerTheme') || 'green-felt';
+        document.body.setAttribute('data-theme', savedTheme);
+        themeSelect.value = savedTheme;
+
+        themeSelect.addEventListener('change', (e) => {
+            const selectedTheme = e.target.value;
+            document.body.setAttribute('data-theme', selectedTheme);
+            localStorage.setItem('kingsCornerTheme', selectedTheme);
+        });
+    }
     
     setupThemeSwitcher();
     loadGame();
@@ -150,8 +168,6 @@ function setupThemeSwitcher() {
 function setupGameScreen() {
     const countSelect = document.getElementById('player-count');
     const container = document.getElementById('name-inputs-container');
-
-    // NEW: Toggle Point Limit Dropdown visibility based on Game Mode selection
     const gameModeSelect = document.getElementById('game-mode');
     const limitGroup = document.getElementById('tournament-limit-group');
 
@@ -165,15 +181,39 @@ function setupGameScreen() {
         });
     }
 
+    // NEW: Build rows containing BOTH an icon dropdown and a name input
     const renderInputFields = (count) => {
         container.innerHTML = '';
         for (let i = 1; i <= count; i++) {
+            const row = document.createElement('div');
+            row.className = 'player-input-row';
+            row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
+            
+            // Icon Picker
+            const select = document.createElement('select');
+            select.className = 'input-control player-icon-select';
+            select.style.cssText = 'width: 75px; font-size: 1.3rem; text-align: center; cursor: pointer;';
+            
+            PLAYER_ICONS.forEach((icon, idx) => {
+                const opt = document.createElement('option');
+                opt.value = icon;
+                opt.textContent = icon;
+                // Default each player to a different starting icon in the array
+                if (idx === (i - 1) % PLAYER_ICONS.length) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            // Name Input
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'input-control player-name-input';
+            input.style.flex = '1';
             input.placeholder = `Player ${i} Name`;
             input.value = `Player ${i}`;
-            container.appendChild(input);
+            
+            row.appendChild(select);
+            row.appendChild(input);
+            container.appendChild(row);
         }
     };
 
@@ -185,21 +225,21 @@ function setupGameScreen() {
         });
 
         document.getElementById('start-game-btn').addEventListener('click', () => {
-            const nameInputs = document.querySelectorAll('.player-name-input');
-            const playerNames = Array.from(nameInputs).map((input, index) => {
-                return input.value.trim() || `Player ${index + 1}`;
+            const rows = container.querySelectorAll('.player-input-row');
+            
+            // NEW: Gather both name and chosen icon for each player
+            const playersData = Array.from(rows).map((row, index) => {
+                const name = row.querySelector('.player-name-input').value.trim() || `Player ${index + 1}`;
+                const icon = row.querySelector('.player-icon-select').value;
+                return { name, icon };
             });
         
-            // Read options from setup screen
             gameState.isSinglePlayer = (document.getElementById('player-count').value === '1');
             gameState.gameMode = document.getElementById('game-mode').value;
-            
-            // NEW: Parse the selected point limit as an integer
             gameState.tournamentLimit = parseInt(document.getElementById('tournament-limit').value, 10); 
-            
             gameState.undoEnabled = document.getElementById('enable-undo').checked;
         
-            initGame(playerNames);
+            initGame(playersData);
         
             const undoBtn = document.getElementById('undo-btn');
             if (gameState.undoEnabled) undoBtn.classList.remove('hidden');
@@ -222,6 +262,7 @@ function setupTurnManagement() {
         if (gameState.deck.length > 0) {
             const drawnCard = gameState.deck.pop();
             gameState.players[gameState.currentPlayerIndex].hand.push(drawnCard);
+            SoundManager.play('draw'); // SOUND: Card draw sound on turn start
         }
         
         renderBoard();
@@ -239,13 +280,13 @@ function setupTurnManagement() {
 function showHoldScreen() {
     const nextPlayer = gameState.players[gameState.currentPlayerIndex];
 
-    // If it's a 1-Player game, skip the pass screen entirely for EVERYONE
     if (gameState.isSinglePlayer) {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         
         if (gameState.deck.length > 0) {
             nextPlayer.hand.push(gameState.deck.pop());
+            SoundManager.play('draw'); // SOUND: Deal card in 1-player mode
         }
             
         renderBoard();
@@ -260,23 +301,28 @@ function showHoldScreen() {
     // Human-only turn handling (Multiplayer device passing)
     document.getElementById('game-container').classList.add('hidden');
     document.getElementById('hold-screen').classList.remove('hidden');
-    document.getElementById('next-player-notice').textContent = `${nextPlayer.name}'s Turn`;
+    
+    // NEW: Display large icon on the turn indicator screen!
+    const noticeEl = document.getElementById('next-player-notice');
+    noticeEl.innerHTML = `
+        <div style="font-size: 4rem; margin-bottom: 10px; line-height: 1;">${nextPlayer.icon}</div>
+        <div>${nextPlayer.name}'s Turn</div>
+    `;
+    
     document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayer.name}. Tap below when ready!`;
+    SoundManager.play('turn'); // SOUND: Turn notification chime
 }
 
 // --- 6. Win Screen & Round Rotation Controls ---
 function setupWinControls() {
     document.getElementById('play-again-btn').addEventListener('click', () => {
-        // Rotate player array so the next person gets to move first
         const previousFirstPlayer = gameState.players.shift();
         gameState.players.push(previousFirstPlayer);
 
-        // If tournament finished (or casual mode), reset everyone's score to 0!
         if (gameState.isTournamentOver || gameState.gameMode !== 'tournament') {
             gameState.players.forEach(p => p.score = 0);
         }
 
-        // Pass existing player objects into initGame
         initGame(null, gameState.players);
         renderBoard();
         
@@ -290,13 +336,14 @@ function setupWinControls() {
     });
 }
 
-// --- 6. Win Screen & Round Rotation Controls (Updated showWinScreen) ---
 function showWinScreen(winnerName) {
     document.getElementById('game-container').classList.add('hidden');
     
-    // Default heading for a single hand
     const winnerDisplay = document.getElementById('winner-display');
-    winnerDisplay.textContent = `${winnerName} Wins the Hand!`;
+    const winningPlayerObj = gameState.players.find(p => p.name === winnerName);
+    const winnerIcon = winningPlayerObj ? winningPlayerObj.icon : '👑';
+    
+    winnerDisplay.innerHTML = `<span style="font-size: 2.5rem;">${winnerIcon}</span><br>${winnerName} Wins the Hand!`;
     
     const scoreContainer = document.getElementById('round-scores');
     let html = `
@@ -310,49 +357,47 @@ function showWinScreen(winnerName) {
             </thead>
             <tbody>`;
             
-    // 1. Calculate and apply scores
     gameState.players.forEach(player => {
         const handPenalty = calculateHandScore(player.hand);
         player.score = (player.score || 0) + handPenalty;
         
         const isWinner = player.hand.length === 0;
+        // NEW: Show player icon next to their name on the scoreboard
         html += `
             <tr>
-                <td>${player.name} ${isWinner ? '👑' : ''}</td>
+                <td><span style="font-size: 1.2rem; margin-right: 6px;">${player.icon}</span><strong>${player.name}</strong> ${isWinner ? '👑' : ''}</td>
                 <td>${isWinner ? '--' : '+' + handPenalty}</td>
                 <td><strong>${player.score} pts</strong></td>
             </tr>`;
     });
     html += `</tbody></table>`;
     
-    // 2. Determine Button Text & Tournament Winner Logic
     const playAgainBtn = document.getElementById('play-again-btn');
-    
-    // NEW: Dynamically grab the point ceiling chosen on the setup screen!
     const TOURNAMENT_LIMIT = gameState.tournamentLimit || 100; 
     let isTournamentOver = false;
 
     if (gameState.gameMode === 'tournament') {
-        // Check if anyone has reached or exceeded the limit
         const maxScore = Math.max(...gameState.players.map(p => p.score));
         
         if (maxScore >= TOURNAMENT_LIMIT) {
             isTournamentOver = true;
-            // Find the player with the LOWEST score to crown Grand Champion
             const grandChamp = [...gameState.players].sort((a, b) => a.score - b.score)[0];
-            winnerDisplay.innerHTML = `🏆 Tournament Complete! 🏆<br><span style="font-size: 1.2rem; color: var(--gold);">${grandChamp.name} is the Grand Champion!</span>`;
+            winnerDisplay.innerHTML = `🏆 Tournament Complete! 🏆<br><div style="font-size: 3rem; margin: 10px 0;">${grandChamp.icon}</div><span style="font-size: 1.4rem; color: var(--gold);">${grandChamp.name} is the Grand Champion!</span>`;
             playAgainBtn.textContent = "Start New Tournament 🏆";
             html += `<p style="font-size: 0.85rem; margin-top: 8px; color: #ffeb3b;">*Someone hit ${TOURNAMENT_LIMIT} points! Lowest total score wins the tournament!*</p>`;
+            
+            SoundManager.play('tournamentWin'); // SOUND: Grand Champion sound!
         } else {
             playAgainBtn.textContent = "Deal Next Hand 🔀";
             html += `<p style="font-size: 0.8rem; margin-top: 8px; opacity: 0.8;">*Tournament Mode: Playing until someone reaches ${TOURNAMENT_LIMIT} points.*</p>`;
+            
+            SoundManager.play('roundWin'); // SOUND: Hand round win sound
         }
     } else {
-        // Casual Mode default
         playAgainBtn.textContent = "Play Again 🔄";
+        SoundManager.play('roundWin'); // SOUND: Casual round win sound
     }
     
-    // Save state flag so win controls know whether to reset scores or not
     gameState.isTournamentOver = isTournamentOver;
     
     if (scoreContainer) scoreContainer.innerHTML = html;
@@ -369,7 +414,10 @@ function showWinScreen(winnerName) {
 // --- 7. Rendering Functions ---
 function renderBoard() {
     document.getElementById('deck-count').textContent = gameState.deck.length;
-    document.getElementById('current-player-display').textContent = gameState.players[gameState.currentPlayerIndex].name;
+    
+    // NEW: Display icon next to name on the live board header
+    const currentP = gameState.players[gameState.currentPlayerIndex];
+    document.getElementById('current-player-display').textContent = `${currentP.icon} ${currentP.name}`;
 
     for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
         const pileEl = document.getElementById(`pile-${pileKey}`);
@@ -381,7 +429,6 @@ function renderBoard() {
             const cardEl = createCardElement(card);
             cardEl.style.top = `${index * 15}px`;
             
-            // Only top card is draggable
             if (index === pileArray.length - 1) {
                 makeDraggable(cardEl, { type: 'pile', pileKey: pileKey, cardIndex: index });
             }
@@ -423,7 +470,7 @@ function makeDraggable(element, dragData) {
             cardObj = gameState.players[gameState.currentPlayerIndex].hand[dragData.cardIndex];
         } else if (dragData.type === 'pile') {
             const pile = gameState.board[dragData.pileKey];
-            cardObj = pile[0]; // Change from pile[pile.length - 1] to pile[0]
+            cardObj = pile[0]; 
         }
 
         activeDrag = {
@@ -443,7 +490,6 @@ function makeDraggable(element, dragData) {
 
         element.style.opacity = '0.3';
         
-        // Highlight legal drop targets
         highlightValidMoves(cardObj, dragData.type);
 
         document.addEventListener('pointermove', onPointerMove);
@@ -493,6 +539,7 @@ function onPointerUp(e) {
 
     const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
     const pileEl = dropTarget ? dropTarget.closest('.pile') : null;
+    let moveSuccessful = false;
 
     if (pileEl) {
         const targetPileKey = pileEl.dataset.pile;
@@ -504,17 +551,25 @@ function onPointerUp(e) {
         } 
         else if (targetPile.length === 0 && !isCorner) {
             executeMove(targetPileKey);
+            moveSuccessful = true;
         }
         else if (isValidMove(activeDrag.card, targetPile)) {
             executeMove(targetPileKey);
+            moveSuccessful = true;
         }
+    }
+
+    // SOUND & HAPTIC: Play error sound if card was dropped in an invalid spot
+    if (!moveSuccessful && pileEl) {
+        SoundManager.play('invalidDrop');
+        triggerHaptic([30, 30, 30]); // Error buzz
     }
 
     activeDrag = null;
 }
 
 function executeMove(targetPileKey) {
-    saveSnapshot(); // Capture state before mutating
+    saveSnapshot(); 
     
     const targetPile = gameState.board[targetPileKey];
 
@@ -531,6 +586,7 @@ function executeMove(targetPileKey) {
         }
     }
 
+    SoundManager.play('validDrop'); // SOUND: Card placed successfully
     triggerHaptic(15);
 
     if (gameState.players[gameState.currentPlayerIndex].hand.length === 0) {
@@ -548,7 +604,7 @@ function executeMove(targetPileKey) {
 function saveGame() {
     if (!gameState.gameStarted) return;
     try {
-        const stateToSave = { ...gameState, history: [] }; // Don't save history array to keep storage light
+        const stateToSave = { ...gameState, history: [] }; 
         localStorage.setItem('kingsCornerSave', JSON.stringify(stateToSave));
     } catch (e) { console.warn("Could not save game to localStorage", e); }
 }
@@ -591,7 +647,7 @@ function saveSnapshot() {
         board: gameState.board
     }));
     gameState.history.push(snapshot);
-    if (gameState.history.length > 15) gameState.history.shift(); // Max 15 undo steps
+    if (gameState.history.length > 15) gameState.history.shift(); 
 }
 
 function performUndo() {
@@ -603,6 +659,7 @@ function performUndo() {
     gameState.currentPlayerIndex = previousState.currentPlayerIndex;
     gameState.board = previousState.board;
     
+    SoundManager.play('draw'); // SOUND: Play draw/swish sound on undo
     triggerHaptic(20);
     renderBoard();
     renderHand();
@@ -614,7 +671,8 @@ function checkAITurn() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (!gameState.isSinglePlayer || !currentPlayer.isAI) return;
 
-    document.getElementById('current-player-display').textContent = `${currentPlayer.name} (Thinking...)`;
+    // NEW: Show AI icon while thinking
+    document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name} (Thinking...)`;
     document.getElementById('end-turn-btn').disabled = true;
     document.getElementById('undo-btn').disabled = true;
 
@@ -645,6 +703,8 @@ function executeAIMoves() {
                 saveSnapshot();
                 currentPlayer.hand.splice(i, 1);
                 gameState.board[pileKey].push(card);
+                
+                SoundManager.play('validDrop'); // SOUND: AI drops a card
                 triggerHaptic(10);
                 renderBoard();
                 renderHand();
@@ -652,7 +712,7 @@ function executeAIMoves() {
                 break;
             }
         }
-        if (madeMove) break; // One move per step for visual clarity
+        if (madeMove) break; 
     }
 
     if (currentPlayer.hand.length === 0) {
@@ -661,7 +721,7 @@ function executeAIMoves() {
     }
 
     if (madeMove) {
-        setTimeout(executeAIMoves, 600); // Chain consecutive moves
+        setTimeout(executeAIMoves, 600); 
     } else {
         setTimeout(() => {
             document.getElementById('end-turn-btn').disabled = false;

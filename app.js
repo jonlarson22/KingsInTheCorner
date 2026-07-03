@@ -29,16 +29,25 @@ function triggerHaptic(ms = 15) {
 }
 
 // --- 1. Initialize the Game ---
-function initGame(playerNames) {
+function initGame(playerNames, existingPlayers = null) {
     gameState.deck = createDeck();
     shuffle(gameState.deck);
     
-    // Set up players with empty hands
-    gameState.players = playerNames.map((name, idx) => ({ 
-        name: name, 
-        hand: [],
-        isAI: (gameState.isSinglePlayer && idx > 0) // Tag players 2+ as AI in single-player mode
-    }));
+    // If resuming/playing another round, keep existing score totals!
+    if (existingPlayers) {
+        gameState.players = existingPlayers.map(p => ({
+            ...p,
+            hand: [] // Clear hands for the new round
+        }));
+    } else {
+        // Fresh game setup
+        gameState.players = playerNames.map((name, idx) => ({ 
+            name: name, 
+            hand: [],
+            score: 0, // NEW: Initialize cumulative score
+            isAI: (gameState.isSinglePlayer && idx > 0)
+        }));
+    }
     
     gameState.currentPlayerIndex = 0;
     
@@ -59,7 +68,7 @@ function initGame(playerNames) {
     };
     
     gameState.gameStarted = true;
-    console.log("Game initialized with turn order:", gameState.players.map(p => p.name));
+    console.log("Round initialized! Players:", gameState.players);
 }
 
 // --- 2. Deck Helpers ---
@@ -254,13 +263,12 @@ function showHoldScreen() {
 // --- 6. Win Screen & Round Rotation Controls ---
 function setupWinControls() {
     document.getElementById('play-again-btn').addEventListener('click', () => {
-        let currentNames = gameState.players.map(p => p.name);
-        
-        // Rotate starting player for fairness
-        const previousFirstPlayer = currentNames.shift();
-        currentNames.push(previousFirstPlayer);
+        // Rotate player array so the next person gets to move first
+        const previousFirstPlayer = gameState.players.shift();
+        gameState.players.push(previousFirstPlayer);
 
-        initGame(currentNames);
+        // Pass existing player objects (with preserved scores!) into initGame
+        initGame(null, gameState.players);
         renderBoard();
         
         document.getElementById('win-screen').classList.add('hidden');
@@ -275,7 +283,42 @@ function setupWinControls() {
 
 function showWinScreen(winnerName) {
     document.getElementById('game-container').classList.add('hidden');
-    document.getElementById('winner-display').textContent = `${winnerName} Wins!`;
+    document.getElementById('winner-display').textContent = `${winnerName} Wins the Hand!`;
+    
+    // --- NEW: SCORING WIRE-UP ---
+    const scoreContainer = document.getElementById('round-scores');
+    let html = `
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Hand Penalty</th>
+                    <th>Total Score</th>
+                </tr>
+            </thead>
+            <tbody>`;
+            
+    gameState.players.forEach(player => {
+        const handPenalty = calculateHandScore(player.hand);
+        player.score = (player.score || 0) + handPenalty;
+        
+        const isWinner = player.hand.length === 0;
+        html += `
+            <tr>
+                <td>${player.name} ${isWinner ? '👑' : ''}</td>
+                <td>${isWinner ? '--' : '+' + handPenalty}</td>
+                <td><strong>${player.score} pts</strong></td>
+            </tr>`;
+    });
+    
+    html += `</tbody></table>`;
+    if (gameState.gameMode === 'tournament') {
+        html += `<p style="font-size: 0.8rem; margin-top: 8px; opacity: 0.8;">*Tournament Mode: Lowest total score wins overall!</p>`;
+    }
+    
+    if (scoreContainer) scoreContainer.innerHTML = html;
+    // ----------------------------
+
     document.getElementById('win-screen').classList.remove('hidden');
     
     triggerHaptic([100, 50, 100, 50, 200]);

@@ -88,13 +88,53 @@ function isValidMove(card, targetPile) {
 
 let activeDrag = null;
 
-// 5. Initialize UI on Load
+// 5. Initialize UI & Setup Screen on Load
 window.addEventListener('DOMContentLoaded', () => {
-    initGame(['Player 1', 'Player 2']);
+    setupGameScreen();
     setupTurnManagement();
-    renderBoard();
-    showHoldScreen();
 });
+
+function setupGameScreen() {
+    const countSelect = document.getElementById('player-count');
+    const container = document.getElementById('name-inputs-container');
+
+    // Helper to generate text boxes based on selected count
+    const renderInputFields = (count) => {
+        container.innerHTML = '';
+        for (let i = 1; i <= count; i++) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'input-control player-name-input';
+            input.placeholder = `Player ${i} Name`;
+            input.value = `Player ${i}`; // Default value
+            container.appendChild(input);
+        }
+    };
+
+    // Initial render for 2 players
+    renderInputFields(parseInt(countSelect.value));
+
+    // Listen for dropdown changes
+    countSelect.addEventListener('change', (e) => {
+        renderInputFields(parseInt(e.target.value));
+    });
+
+    // Start Game Button Click
+    document.getElementById('start-game-btn').addEventListener('click', () => {
+        const nameInputs = document.querySelectorAll('.player-name-input');
+        const playerNames = Array.from(nameInputs).map((input, index) => {
+            // Fallback to "Player X" if they left the field blank
+            return input.value.trim() || `Player ${index + 1}`;
+        });
+
+        initGame(playerNames);
+        renderBoard();
+        
+        // Hide setup, show the first player's hold screen
+        document.getElementById('setup-screen').classList.add('hidden');
+        showHoldScreen();
+    });
+}
 
 // 6. View Switching & Turn Management
 function setupTurnManagement() {
@@ -113,7 +153,7 @@ function setupTurnManagement() {
     });
 
     document.getElementById('end-turn-btn').addEventListener('click', () => {
-        // Switch to next player
+        // Switch to next player index
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
         showHoldScreen();
     });
@@ -122,8 +162,13 @@ function setupTurnManagement() {
 function showHoldScreen() {
     document.getElementById('game-container').classList.add('hidden');
     document.getElementById('hold-screen').classList.remove('hidden');
-    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    document.getElementById('next-player-notice').textContent = `${currentPlayer.name}'s Turn`;
+    
+    // Grab the specific name of the player whose turn is starting
+    const nextPlayerName = gameState.players[gameState.currentPlayerIndex].name;
+    
+    // Inject personalized names into the hold screen
+    document.getElementById('next-player-notice').textContent = `${nextPlayerName}'s Turn`;
+    document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayerName}. Tap below when ready!`;
 }
 
 // 7. Rendering Functions

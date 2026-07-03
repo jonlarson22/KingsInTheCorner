@@ -9,13 +9,35 @@
 </head>
 <body>
 
-    <div id="hold-screen" class="modal">
-        <div class="modal-content">
-            <h2 id="next-player-notice">Player 1's Turn</h2>
-            <p>Pass the device to the next player.</p>
-            <button id="start-turn-btn" class="btn primary">Start Turn (Draw Card)</button>
+    <div id="setup-screen" class="modal">
+    <div class="modal-content">
+        <h2>Kings in the Corner</h2>
+        <p>Select players and enter names to begin.</p>
+        
+        <div class="form-group">
+            <label for="player-count">Number of Players:</label>
+            <select id="player-count" class="input-control">
+                <option value="2">2 Players</option>
+                <option value="3">3 Players</option>
+                <option value="4">4 Players</option>
+            </select>
         </div>
+
+        <div id="name-inputs-container">
+            <!-- Dynamically populated by JS -->
+        </div>
+
+        <button id="start-game-btn" class="btn primary">Start Game</button>
     </div>
+</div>
+    
+    <div id="hold-screen" class="modal hidden">
+    <div class="modal-content">
+        <h2 id="next-player-notice">Player's Turn</h2>
+        <p id="pass-device-notice">Pass the device to the next player.</p>
+        <button id="start-turn-btn" class="btn primary">Ready (Draw Card)</button>
+    </div>
+</div>
 
     <div id="game-container" class="hidden">
         <header class="game-header">

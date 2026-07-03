@@ -10,68 +10,65 @@
 </head>
 <body>
 
-    <div class="form-group">
-    <label for="game-mode">Game Mode:</label>
-    <select id="game-mode" class="input-control">
-        <option value="pass">Pass & Play (Multiplayer)</option>
-        <option value="ai">Single Player vs. AI</option>
-    </select>
-</div>
-<div class="form-group checkbox-group">
-    <label>
-        <input type="checkbox" id="enable-undo" checked> Enable Undo Button
-    </label>
-</div>
-
-<button id="undo-btn" class="btn hidden">Undo</button>
-    
     <div id="setup-screen" class="modal">
-    <div class="modal-content">
-        <h2>Kings in the Corner</h2>
-        <p>Select players and enter names to begin.</p>
-        
-        <div class="form-group">
-            <label for="player-count">Number of Players:</label>
-            <select id="player-count" class="input-control">
-                <option value="2">2 Players</option>
-                <option value="3">3 Players</option>
-                <option value="4">4 Players</option>
-            </select>
-        </div>
+        <div class="modal-content">
+            <h2>Kings in the Corner</h2>
+            <p>Select players and enter names to begin.</p>
+            
+            <div class="form-group">
+                <label for="player-count">Number of Players:</label>
+                <select id="player-count" class="input-control">
+                    <option value="2">2 Players</option>
+                    <option value="3">3 Players</option>
+                    <option value="4">4 Players</option>
+                </select>
+            </div>
 
-        <div id="name-inputs-container">
-            <!-- Dynamically populated by JS -->
-        </div>
+            <div class="form-group">
+                <label for="game-mode">Game Mode:</label>
+                <select id="game-mode" class="input-control">
+                    <option value="pass">Pass & Play (Multiplayer)</option>
+                    <option value="ai">Single Player vs. AI</option>
+                </select>
+            </div>
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="enable-undo" checked> Enable Undo Button
+                </label>
+            </div>
 
-        <button id="start-game-btn" class="btn primary">Start Game</button>
+            <div id="name-inputs-container">
+                </div>
+
+            <button id="start-game-btn" class="btn primary">Start Game</button>
+        </div>
     </div>
-</div>
     
     <div id="hold-screen" class="modal hidden">
-    <div class="modal-content">
-        <h2 id="next-player-notice">Player's Turn</h2>
-        <p id="pass-device-notice">Pass the device to the next player.</p>
-        <button id="start-turn-btn" class="btn primary">Ready (Draw Card)</button>
-    </div>
-</div>
-
-    <!-- NEW: Phase 4 - Win Screen Modal -->
-<div id="win-screen" class="modal hidden">
-    <div class="modal-content win-content">
-        <h1 id="winner-display">Player 1 Wins!</h1>
-        <p>👑 Kings in the Corner Champion! 👑</p>
-        
-        <div class="win-actions">
-            <button id="play-again-btn" class="btn primary">Play Again (Same Players)</button>
-            <button id="new-setup-btn" class="btn">Change Players / Main Menu</button>
+        <div class="modal-content">
+            <h2 id="next-player-notice">Player's Turn</h2>
+            <p id="pass-device-notice">Pass the device to the next player.</p>
+            <button id="start-turn-btn" class="btn primary">Ready (Draw Card)</button>
         </div>
     </div>
-</div>
+
+    <div id="win-screen" class="modal hidden">
+        <div class="modal-content win-content">
+            <h1 id="winner-display">Player 1 Wins!</h1>
+            <p>👑 Kings in the Corner Champion! 👑</p>
+            
+            <div class="win-actions">
+                <button id="play-again-btn" class="btn primary">Play Again (Same Players)</button>
+                <button id="new-setup-btn" class="btn">Change Players / Main Menu</button>
+            </div>
+        </div>
+    </div>
     
     <div id="game-container" class="hidden">
         <header class="game-header">
             <h3 id="current-player-display">Player 1</h3>
             <div class="controls">
+                <button id="undo-btn" class="btn hidden">Undo</button>
                 <button id="end-turn-btn" class="btn">End Turn</button>
             </div>
         </header>

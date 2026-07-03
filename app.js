@@ -83,3 +83,203 @@ function isValidMove(card, targetPile) {
     
     return isOppositeColor && isOneRankLower;
 }
+
+// --- Phase 3 & 4: UI Rendering, Turn Management, & Drag/Drop ---
+
+let activeDrag = null;
+
+// 5. Initialize UI on Load
+window.addEventListener('DOMContentLoaded', () => {
+    initGame(['Player 1', 'Player 2']);
+    setupTurnManagement();
+    renderBoard();
+    showHoldScreen();
+});
+
+// 6. View Switching & Turn Management
+function setupTurnManagement() {
+    document.getElementById('start-turn-btn').addEventListener('click', () => {
+        document.getElementById('hold-screen').classList.add('hidden');
+        document.getElementById('game-container').classList.remove('hidden');
+        
+        // Draw card at the start of turn
+        if (gameState.deck.length > 0) {
+            const drawnCard = gameState.deck.pop();
+            gameState.players[gameState.currentPlayerIndex].hand.push(drawnCard);
+        }
+        
+        renderBoard();
+        renderHand();
+    });
+
+    document.getElementById('end-turn-btn').addEventListener('click', () => {
+        // Switch to next player
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+        showHoldScreen();
+    });
+}
+
+function showHoldScreen() {
+    document.getElementById('game-container').classList.add('hidden');
+    document.getElementById('hold-screen').classList.remove('hidden');
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    document.getElementById('next-player-notice').textContent = `${currentPlayer.name}'s Turn`;
+}
+
+// 7. Rendering Functions
+function renderBoard() {
+    document.getElementById('deck-count').textContent = gameState.deck.length;
+    document.getElementById('current-player-display').textContent = gameState.players[gameState.currentPlayerIndex].name;
+
+    // Render all 8 piles
+    for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
+        const pileEl = document.getElementById(`pile-${pileKey}`);
+        // Clear existing rendered cards (keep corner label if empty)
+        const label = pileEl.querySelector('.pile-label');
+        pileEl.innerHTML = '';
+        if (label && pileArray.length === 0) pileEl.appendChild(label);
+
+        // Render overlapping cards in the pile
+        pileArray.forEach((card, index) => {
+            const cardEl = createCardElement(card);
+            cardEl.style.top = `${index * 15}px`; // Vertical offset for stacking
+            
+            // Only the top card of a pile can be dragged (for pile merging)
+            if (index === pileArray.length - 1) {
+                makeDraggable(cardEl, { type: 'pile', pileKey: pileKey, cardIndex: index });
+            }
+            pileEl.appendChild(cardEl);
+        });
+    }
+}
+
+function renderHand() {
+    const handEl = document.getElementById('player-hand');
+    handEl.innerHTML = '';
+    const currentHand = gameState.players[gameState.currentPlayerIndex].hand;
+
+    currentHand.forEach((card, index) => {
+        const cardEl = createCardElement(card);
+        makeDraggable(cardEl, { type: 'hand', cardIndex: index });
+        handEl.appendChild(cardEl);
+    });
+}
+
+function createCardElement(card) {
+    const el = document.createElement('div');
+    el.className = `card ${card.color}`;
+    el.innerHTML = `
+        <div class="card-top-left">${card.value}<br>${card.suit}</div>
+        <div class="card-center">${card.suit}</div>
+        <div class="card-bottom-right">${card.value}<br>${card.suit}</div>
+    `;
+    return el;
+}
+
+// 8. Universal Touch/Mouse Drag & Drop Logic
+function makeDraggable(element, dragData) {
+    element.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        
+        // Identify the exact card object being dragged
+        let cardObj;
+        if (dragData.type === 'hand') {
+            cardObj = gameState.players[gameState.currentPlayerIndex].hand[dragData.cardIndex];
+        } else if (dragData.type === 'pile') {
+            const pile = gameState.board[dragData.pileKey];
+            cardObj = pile[pile.length - 1];
+        }
+
+        activeDrag = {
+            element: element,
+            data: dragData,
+            card: cardObj,
+            startX: e.clientX,
+            startY: e.clientY
+        };
+
+        // Setup Ghost Element for visual drag feedback
+        const ghost = document.getElementById('drag-ghost');
+        ghost.className = `card ${cardObj.color}`;
+        ghost.innerHTML = element.innerHTML;
+        ghost.style.left = `${e.clientX}px`;
+        ghost.style.top = `${e.clientY}px`;
+        ghost.classList.remove('hidden');
+
+        element.style.opacity = '0.3';
+
+        document.addEventListener('pointermove', onPointerMove);
+        document.addEventListener('pointerup', onPointerUp);
+    });
+}
+
+function onPointerMove(e) {
+    if (!activeDrag) return;
+    const ghost = document.getElementById('drag-ghost');
+    ghost.style.left = `${e.clientX}px`;
+    ghost.style.top = `${e.clientY}px`;
+}
+
+function onPointerUp(e) {
+    if (!activeDrag) return;
+
+    // Cleanup drag listeners & UI
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+    document.getElementById('drag-ghost').classList.add('hidden');
+    activeDrag.element.style.opacity = '1';
+
+    // Identify drop target using collision detection
+    const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+    const pileEl = dropTarget ? dropTarget.closest('.pile') : null;
+
+    if (pileEl) {
+        const targetPileKey = pileEl.dataset.pile;
+        const targetPile = gameState.board[targetPileKey];
+        const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetPileKey);
+
+        // Enforce Corner Rule: Empty corners can ONLY take Kings
+        if (targetPile.length === 0 && isCorner && activeDrag.card.value !== 'K') {
+            console.log("Only Kings can be placed in empty corner piles!");
+        } 
+        // Enforce Standard Rule: Empty standard piles can take ANY card
+        else if (targetPile.length === 0 && !isCorner && activeDrag.type === 'hand') {
+            executeMove(targetPileKey);
+        }
+        // Enforce Rule Validator for occupied piles
+        else if (isValidMove(activeDrag.card, targetPile)) {
+            executeMove(targetPileKey);
+        }
+    }
+
+    activeDrag = null;
+}
+
+function executeMove(targetPileKey) {
+    const targetPile = gameState.board[targetPileKey];
+
+    if (activeDrag.data.type === 'hand') {
+        // Move card from hand to pile
+        const hand = gameState.players[gameState.currentPlayerIndex].hand;
+        const [playedCard] = hand.splice(activeDrag.data.cardIndex, 1);
+        targetPile.push(playedCard);
+    } 
+    else if (activeDrag.data.type === 'pile') {
+        // Merge piles: Move ALL cards from source pile to target pile
+        const sourcePileKey = activeDrag.data.pileKey;
+        if (sourcePileKey !== targetPileKey) {
+            const cardsToMove = gameState.board[sourcePileKey].splice(0);
+            gameState.board[targetPileKey].push(...cardsToMove);
+        }
+    }
+
+    // Check for Win Condition
+    if (gameState.players[gameState.currentPlayerIndex].hand.length === 0) {
+        alert(`${gameState.players[gameState.currentPlayerIndex].name} Wins!`);
+        location.reload();
+        return;
+    }
+
+    renderBoard();
+    renderHand();
+}

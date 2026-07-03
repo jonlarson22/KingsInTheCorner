@@ -1,9 +1,9 @@
-// app.js - Complete Game Logic, PWA Flow, & UI Management
+// app.js - Complete Game Logic, PWA Flow, AI Bot, Undo, & UI Management
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
-// Add to your Global Game State
+// --- Global Game State ---
 let gameState = {
     deck: [],
     players: [],
@@ -13,26 +13,32 @@ let gameState = {
         nw: [], ne: [], se: [], sw: []
     },
     gameStarted: false,
-    // NEW: Feature tracking
     isSinglePlayer: false,
     undoEnabled: true,
     history: [] // Stores state snapshots for Undo
 };
 
-// Haptic Feedback Helper
+let activeDrag = null;
+
+// --- Haptic Feedback Helper ---
 function triggerHaptic(ms = 15) {
     if ('vibrate' in navigator) {
         try { navigator.vibrate(ms); } catch (e) {}
     }
 }
 
-// 1. Initialize the Game
+// --- 1. Initialize the Game ---
 function initGame(playerNames) {
     gameState.deck = createDeck();
     shuffle(gameState.deck);
     
     // Set up players with empty hands
-    gameState.players = playerNames.map(name => ({ name: name, hand: [] }));
+    gameState.players = playerNames.map((name, idx) => ({ 
+        name: name, 
+        hand: [],
+        isAI: (gameState.isSinglePlayer && idx > 0) // Tag players 2+ as AI in single-player mode
+    }));
+    
     gameState.currentPlayerIndex = 0;
     
     // Deal 7 cards to each player
@@ -55,7 +61,7 @@ function initGame(playerNames) {
     console.log("Game initialized with turn order:", gameState.players.map(p => p.name));
 }
 
-// 2. Helper: Create a Standard 52-Card Deck
+// --- 2. Deck Helpers ---
 function createDeck() {
     let deck = [];
     for (let suit of SUITS) {
@@ -68,7 +74,6 @@ function createDeck() {
     return deck;
 }
 
-// 3. Helper: Shuffle Deck (Fisher-Yates Algorithm)
 function shuffle(deck) {
     for (let i = deck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -76,39 +81,34 @@ function shuffle(deck) {
     }
 }
 
-// 4. Rule Validator: Can Card A be placed on Pile B?
+// --- 3. Rule Validator ---
 function isValidMove(card, targetPile) {
-    // If the pile is empty
     if (targetPile.length === 0) {
-        // Kings can ONLY go into empty corners (NW, NE, SE, SW)
-        return card.value === 'K';
+        return card.value === 'K'; // Kings ONLY in empty corners
     }
-    
     const topCard = targetPile[targetPile.length - 1];
-    
-    // Valid move: Must be opposite color AND exactly one rank lower
     const isOppositeColor = card.color !== topCard.color;
     const isOneRankLower = topCard.rank - card.rank === 1;
-    
     return isOppositeColor && isOneRankLower;
 }
 
-// --- Phase 3 & 4: UI Rendering, Turn Management, & Drag/Drop ---
-
-let activeDrag = null;
-
-// 5. Initialize UI & Screens on Load
+// --- 4. Initialize UI & Screens on Load ---
 window.addEventListener('DOMContentLoaded', () => {
     setupGameScreen();
     setupTurnManagement();
     setupWinControls();
+    
+    // Bind Undo Button
+    document.getElementById('undo-btn').addEventListener('click', performUndo);
+    
+    // Check for existing saved game
+    loadGame();
 });
 
 function setupGameScreen() {
     const countSelect = document.getElementById('player-count');
     const container = document.getElementById('name-inputs-container');
 
-    // Helper to generate text boxes based on selected count
     const renderInputFields = (count) => {
         container.innerHTML = '';
         for (let i = 1; i <= count; i++) {
@@ -116,39 +116,43 @@ function setupGameScreen() {
             input.type = 'text';
             input.className = 'input-control player-name-input';
             input.placeholder = `Player ${i} Name`;
-            input.value = `Player ${i}`; // Default value
+            input.value = `Player ${i}`;
             container.appendChild(input);
         }
     };
 
-    // Initial render for 2 players
     if (countSelect && container) {
         renderInputFields(parseInt(countSelect.value));
 
-        // Listen for dropdown changes
         countSelect.addEventListener('change', (e) => {
             renderInputFields(parseInt(e.target.value));
         });
 
-        // Start Game Button Click
         document.getElementById('start-game-btn').addEventListener('click', () => {
             const nameInputs = document.querySelectorAll('.player-name-input');
             const playerNames = Array.from(nameInputs).map((input, index) => {
-                // Fallback to "Player X" if they left the field blank
                 return input.value.trim() || `Player ${index + 1}`;
             });
 
+            // Read options from setup screen
+            gameState.isSinglePlayer = (document.getElementById('game-mode').value === 'ai');
+            gameState.undoEnabled = document.getElementById('enable-undo').checked;
+
             initGame(playerNames);
+
+            // Toggle Undo button visibility
+            const undoBtn = document.getElementById('undo-btn');
+            if (gameState.undoEnabled) undoBtn.classList.remove('hidden');
+            else undoBtn.classList.add('hidden');
+
             renderBoard();
-            
-            // Hide setup, show the first player's hold screen
             document.getElementById('setup-screen').classList.add('hidden');
             showHoldScreen();
         });
     }
 }
 
-// 6. View Switching & Turn Management
+// --- 5. Turn Management & View Switching ---
 function setupTurnManagement() {
     document.getElementById('start-turn-btn').addEventListener('click', () => {
         document.getElementById('hold-screen').classList.add('hidden');
@@ -162,34 +166,46 @@ function setupTurnManagement() {
         
         renderBoard();
         renderHand();
+        saveGame();
     });
 
     document.getElementById('end-turn-btn').addEventListener('click', () => {
-        // Switch to next player index
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+        saveGame();
         showHoldScreen();
     });
 }
 
 function showHoldScreen() {
+    const nextPlayer = gameState.players[gameState.currentPlayerIndex];
+    
+    // If it's the AI's turn, bypass the hold screen and execute automation
+    if (gameState.isSinglePlayer && nextPlayer.isAI) {
+        document.getElementById('hold-screen').classList.add('hidden');
+        document.getElementById('game-container').classList.remove('hidden');
+        
+        if (gameState.deck.length > 0) {
+            nextPlayer.hand.push(gameState.deck.pop());
+        }
+        renderBoard();
+        renderHand();
+        checkAITurn();
+        return;
+    }
+
+    // Human turn handling
     document.getElementById('game-container').classList.add('hidden');
     document.getElementById('hold-screen').classList.remove('hidden');
-    
-    // Grab the specific name of the player whose turn is starting
-    const nextPlayerName = gameState.players[gameState.currentPlayerIndex].name;
-    
-    // Inject personalized names into the hold screen
-    document.getElementById('next-player-notice').textContent = `${nextPlayerName}'s Turn`;
-    document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayerName}. Tap below when ready!`;
+    document.getElementById('next-player-notice').textContent = `${nextPlayer.name}'s Turn`;
+    document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayer.name}. Tap below when ready!`;
 }
 
-// 7. Win Screen & Round Rotation Controls
+// --- 6. Win Screen & Round Rotation Controls ---
 function setupWinControls() {
-    // Play again with the same players, but ROTATE starting order for fairness!
     document.getElementById('play-again-btn').addEventListener('click', () => {
         let currentNames = gameState.players.map(p => p.name);
         
-        // Rotate: Move the person who went first this round to the end of the line
+        // Rotate starting player for fairness
         const previousFirstPlayer = currentNames.shift();
         currentNames.push(previousFirstPlayer);
 
@@ -200,7 +216,6 @@ function setupWinControls() {
         showHoldScreen();
     });
 
-    // Go back to the main setup screen
     document.getElementById('new-setup-btn').addEventListener('click', () => {
         document.getElementById('win-screen').classList.add('hidden');
         document.getElementById('setup-screen').classList.remove('hidden');
@@ -212,10 +227,8 @@ function showWinScreen(winnerName) {
     document.getElementById('winner-display').textContent = `${winnerName} Wins!`;
     document.getElementById('win-screen').classList.remove('hidden');
     
-    // Trigger Haptic pulse
     triggerHaptic([100, 50, 100, 50, 200]);
 
-    // Fire Confetti!
     if (typeof confetti === 'function') {
         confetti({
             particleCount: 100,
@@ -224,27 +237,25 @@ function showWinScreen(winnerName) {
         });
     }
     
-    localStorage.removeItem('kingsCornerSave'); // Clear save on game over
+    localStorage.removeItem('kingsCornerSave'); // Clean up saved game on win
 }
 
-// 8. Rendering Functions
+// --- 7. Rendering Functions ---
 function renderBoard() {
     document.getElementById('deck-count').textContent = gameState.deck.length;
     document.getElementById('current-player-display').textContent = gameState.players[gameState.currentPlayerIndex].name;
 
-    // Render all 8 piles
     for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
         const pileEl = document.getElementById(`pile-${pileKey}`);
         const label = pileEl.querySelector('.pile-label');
         pileEl.innerHTML = '';
         if (label && pileArray.length === 0) pileEl.appendChild(label);
 
-        // Render overlapping cards in the pile
         pileArray.forEach((card, index) => {
             const cardEl = createCardElement(card);
-            cardEl.style.top = `${index * 15}px`; // Vertical offset for stacking
+            cardEl.style.top = `${index * 15}px`;
             
-            // Only the top card of a pile can be dragged (for pile merging)
+            // Only top card is draggable
             if (index === pileArray.length - 1) {
                 makeDraggable(cardEl, { type: 'pile', pileKey: pileKey, cardIndex: index });
             }
@@ -276,7 +287,7 @@ function createCardElement(card) {
     return el;
 }
 
-// 9. Universal Touch/Mouse Drag & Drop Logic
+// --- 8. Drag & Drop + Move Highlighting ---
 function makeDraggable(element, dragData) {
     element.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -305,13 +316,15 @@ function makeDraggable(element, dragData) {
         ghost.classList.remove('hidden');
 
         element.style.opacity = '0.3';
+        
+        // Highlight legal drop targets
+        highlightValidMoves(cardObj, dragData.type);
 
         document.addEventListener('pointermove', onPointerMove);
         document.addEventListener('pointerup', onPointerUp);
     });
 }
 
-// Add inside makeDraggable() right after setting activeDrag:
 function highlightValidMoves(cardObj, dragType) {
     for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
         const pileEl = document.getElementById(`pile-${pileKey}`);
@@ -319,7 +332,6 @@ function highlightValidMoves(cardObj, dragType) {
         
         let isValid = false;
         if (pileArray.length === 0) {
-            // Empty corners take Kings; empty standards take ANY hand card
             if (isCorner && cardObj.value === 'K') isValid = true;
             else if (!isCorner && dragType === 'hand') isValid = true;
         } else if (isValidMove(cardObj, pileArray)) {
@@ -330,7 +342,6 @@ function highlightValidMoves(cardObj, dragType) {
     }
 }
 
-// Helper to clear highlights on drop
 function clearHighlights() {
     document.querySelectorAll('.valid-target').forEach(el => {
         el.classList.remove('valid-target');
@@ -346,6 +357,8 @@ function onPointerMove(e) {
 
 function onPointerUp(e) {
     if (!activeDrag) return;
+    
+    clearHighlights();
 
     document.removeEventListener('pointermove', onPointerMove);
     document.removeEventListener('pointerup', onPointerUp);
@@ -363,7 +376,7 @@ function onPointerUp(e) {
         if (targetPile.length === 0 && isCorner && activeDrag.card.value !== 'K') {
             console.log("Only Kings can be placed in empty corner piles!");
         } 
-        else if (targetPile.length === 0 && !isCorner && activeDrag.type === 'hand') {
+        else if (targetPile.length === 0 && !isCorner && activeDrag.data.type === 'hand') {
             executeMove(targetPileKey);
         }
         else if (isValidMove(activeDrag.card, targetPile)) {
@@ -375,6 +388,8 @@ function onPointerUp(e) {
 }
 
 function executeMove(targetPileKey) {
+    saveSnapshot(); // Capture state before mutating
+    
     const targetPile = gameState.board[targetPileKey];
 
     if (activeDrag.data.type === 'hand') {
@@ -390,7 +405,8 @@ function executeMove(targetPileKey) {
         }
     }
 
-    // Check for Win Condition -> Transition to Win Screen!
+    triggerHaptic(15);
+
     if (gameState.players[gameState.currentPlayerIndex].hand.length === 0) {
         const winningPlayer = gameState.players[gameState.currentPlayerIndex];
         showWinScreen(winningPlayer.name);
@@ -399,23 +415,14 @@ function executeMove(targetPileKey) {
 
     renderBoard();
     renderHand();
+    saveGame();
 }
 
-// 10. Register PWA Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker registered!', reg))
-            .catch(err => console.error('Service Worker registration failed', err));
-    });
-}
-
-// --- Auto-Save & LocalStorage ---
+// --- 9. Auto-Save & LocalStorage ---
 function saveGame() {
     if (!gameState.gameStarted) return;
     try {
-        // We don't save the history stack to keep localStorage lightweight
-        const stateToSave = { ...gameState, history: [] };
+        const stateToSave = { ...gameState, history: [] }; // Don't save history array to keep storage light
         localStorage.setItem('kingsCornerSave', JSON.stringify(stateToSave));
     } catch (e) { console.warn("Could not save game to localStorage", e); }
 }
@@ -428,15 +435,15 @@ function loadGame() {
             if (parsed.gameStarted) {
                 if (confirm("Resume saved game?")) {
                     gameState = parsed;
-                    gameState.history = []; // Reset undo stack on reload
+                    gameState.history = [];
                     document.getElementById('setup-screen').classList.add('hidden');
-                    if (gameState.undoEnabled) {
-                        document.getElementById('undo-btn').classList.remove('hidden');
-                    }
+                    
+                    const undoBtn = document.getElementById('undo-btn');
+                    if (gameState.undoEnabled) undoBtn.classList.remove('hidden');
+                    else undoBtn.classList.add('hidden');
+                    
                     renderBoard();
                     renderHand();
-                    
-                    // If resuming into AI turn, trigger it
                     checkAITurn();
                     return true;
                 } else {
@@ -448,10 +455,9 @@ function loadGame() {
     return false;
 }
 
-// --- Undo System ---
+// --- 10. Undo System ---
 function saveSnapshot() {
     if (!gameState.undoEnabled) return;
-    // Deep copy current state without the history array itself
     const snapshot = JSON.parse(JSON.stringify({
         deck: gameState.deck,
         players: gameState.players,
@@ -459,8 +465,7 @@ function saveSnapshot() {
         board: gameState.board
     }));
     gameState.history.push(snapshot);
-    // Limit history to last 15 moves to prevent memory bloat
-    if (gameState.history.length > 15) gameState.history.shift();
+    if (gameState.history.length > 15) gameState.history.shift(); // Max 15 undo steps
 }
 
 function performUndo() {
@@ -478,13 +483,14 @@ function performUndo() {
     saveGame();
 }
 
+// --- 11. Single-Player AI Bot Engine ---
 function checkAITurn() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (!gameState.isSinglePlayer || !currentPlayer.isAI) return;
 
-    // Show AI status on header
     document.getElementById('current-player-display').textContent = `${currentPlayer.name} (Thinking...)`;
     document.getElementById('end-turn-btn').disabled = true;
+    document.getElementById('undo-btn').disabled = true;
 
     setTimeout(() => {
         executeAIMoves();
@@ -495,7 +501,6 @@ function executeAIMoves() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     let madeMove = false;
 
-    // 1. Try to play cards from hand
     for (let i = 0; i < currentPlayer.hand.length; i++) {
         const card = currentPlayer.hand[i];
         
@@ -521,25 +526,32 @@ function executeAIMoves() {
                 break;
             }
         }
-        if (madeMove) break; // Execute one move at a time for visual clarity
+        if (madeMove) break; // One move per step for visual clarity
     }
 
-    // 2. Check Win Condition
     if (currentPlayer.hand.length === 0) {
         showWinScreen(currentPlayer.name);
         return;
     }
 
-    // 3. If a move was made, pause and check for chain moves!
     if (madeMove) {
-        setTimeout(executeAIMoves, 600);
+        setTimeout(executeAIMoves, 600); // Chain consecutive moves
     } else {
-        // No valid moves left -> End AI Turn
         setTimeout(() => {
             document.getElementById('end-turn-btn').disabled = false;
+            document.getElementById('undo-btn').disabled = false;
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
             saveGame();
             showHoldScreen();
         }, 500);
     }
+}
+
+// --- 12. Register PWA Service Worker ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker registered!', reg))
+            .catch(err => console.error('Service Worker registration failed', err));
+    });
 }

@@ -266,3 +266,58 @@ body {
     height: 20px;
     accent-color: #ffb300;
 }
+
+/* Base card transition for smooth layout shifts */
+.card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, left 0.2s ease, top 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Elevate and scale the card when picked up */
+.card.dragging, #drag-ghost {
+    transform: scale(1.08) rotate(3deg);
+    box-shadow: 0 14px 28px rgba(0,0,0,0.45), 0 10px 10px rgba(0,0,0,0.38);
+    z-index: 1000;
+    cursor: grabbing;
+}
+
+/* Subtle entrance animation when cards are dealt or played */
+@keyframes cardSnap {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.pile .card:last-child {
+    animation: cardSnap 0.18s ease-out forwards;
+}
+
+/* 1. Define theme variables */
+body[data-theme="green-felt"] {
+    --table-bg: #076324;
+    --table-pattern: radial-gradient(#0a7e2e 15%, transparent 16%);
+    --card-back-bg: linear-gradient(135deg, #b31217, #e52d27);
+}
+
+body[data-theme="dark-wood"] {
+    --table-bg: #2b1810;
+    --table-pattern: linear-gradient(0deg, rgba(0,0,0,0.2) 50%, transparent 50%);
+    --card-back-bg: linear-gradient(135deg, #1e3c72, #2a5298);
+}
+
+body[data-theme="midnight-slate"] {
+    --table-bg: #1a1a2e;
+    --table-pattern: none;
+    --card-back-bg: linear-gradient(135deg, #11998e, #38ef7d);
+}
+
+/* 2. Apply them to your layout */
+.board-grid {
+    background-color: var(--table-bg);
+    background-image: var(--table-pattern);
+    background-size: 30px 30px;
+}
+
+.card.back {
+    background: var(--card-back-bg);
+}

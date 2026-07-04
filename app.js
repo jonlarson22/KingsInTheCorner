@@ -1,10 +1,7 @@
-// app.js - Complete Game Logic, Dynamic Setup, Paced AI Bot, Undo, Sounds, & UI Management
-
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const PLAYER_ICONS = ['👑', '🤖', '🃏', '🦊', '🤠', '🏴‍☠️', '🧙‍♂️', '🥷', '🦁', '🐉', '👾', '🎲'];
 
-// --- SOUND: Modular Sound Effects Engine ---
 const SoundManager = {
     enabled: true,
     sounds: {
@@ -24,7 +21,6 @@ const SoundManager = {
     }
 };
 
-// --- Global Game State ---
 let gameState = {
     deck: [],
     players: [],
@@ -43,14 +39,12 @@ let gameState = {
 
 let activeDrag = null;
 
-// --- Haptic Feedback Helper ---
 function triggerHaptic(ms = 15) {
     if ('vibrate' in navigator) {
         try { navigator.vibrate(ms); } catch (e) {}
     }
 }
 
-// --- 1. Initialize the Game ---
 function initGame(playersData, existingPlayers = null) {
     gameState.deck = createDeck();
     shuffle(gameState.deck);
@@ -73,14 +67,12 @@ function initGame(playersData, existingPlayers = null) {
     gameState.currentPlayerIndex = 0;
     gameState.hasDrawnThisTurn = false;
     
-    // Deal 7 cards to each player
     for (let i = 0; i < 7; i++) {
         gameState.players.forEach(player => {
             player.hand.push(gameState.deck.pop());
         });
     }
     
-    // Reset board piles
     gameState.board = {
         north: [gameState.deck.pop()],
         east: [gameState.deck.pop()],
@@ -93,7 +85,6 @@ function initGame(playersData, existingPlayers = null) {
     console.log("Round initialized! Players:", gameState.players);
 }
 
-// --- 2. Deck Helpers ---
 function createDeck() {
     let deck = [];
     for (let suit of SUITS) {
@@ -113,7 +104,6 @@ function shuffle(deck) {
     }
 }
 
-// --- 3. Rule Validator ---
 function isValidMove(card, targetPile) {
     if (targetPile.length === 0) {
         return card.value === 'K'; 
@@ -124,7 +114,6 @@ function isValidMove(card, targetPile) {
     return isOppositeColor && isOneRankLower;
 }
 
-// --- 4. Initialize UI & Screens on Load ---
 window.addEventListener('DOMContentLoaded', () => {
     setupGameScreen();
     setupTurnManagement();
@@ -174,7 +163,6 @@ function setupGameScreen() {
         });
     }
 
-    // --- CHANGE 1: Intelligent Defaults for 2-Player (vs AI) ---
     const renderInputFields = (count) => {
         container.innerHTML = '';
         for (let i = 1; i <= count; i++) {
@@ -182,7 +170,6 @@ function setupGameScreen() {
             row.className = 'player-input-row';
             row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
             
-            // Icon Picker
             const select = document.createElement('select');
             select.className = 'input-control player-icon-select';
             select.style.cssText = 'width: 65px; font-size: 1.2rem; text-align: center; cursor: pointer;';
@@ -195,15 +182,13 @@ function setupGameScreen() {
                 select.appendChild(opt);
             });
 
-            // Name Input
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'input-control player-name-input';
             input.style.flex = '1';
             input.placeholder = `Player ${i} Name`;
             input.value = i === 1 ? 'Player 1' : `Bot ${i - 1}`;
-            
-            // Player Type Dropdown (Human vs. Bot)
+
             const typeSelect = document.createElement('select');
             typeSelect.className = 'input-control player-type-select';
             typeSelect.style.cssText = 'width: 100px; cursor: pointer; font-weight: bold;';
@@ -211,14 +196,12 @@ function setupGameScreen() {
                 <option value="human">Human</option>
                 <option value="ai">Bot 🤖</option>
             `;
-            
-            // Default Player 1 to Human. Default subsequent players to Bot for fast setup!
+
             if (i > 1) {
                 typeSelect.value = 'ai';
                 select.value = '🤖';
             }
 
-            // Sync icon and name dynamically when type changes
             typeSelect.addEventListener('change', (e) => {
                 if (e.target.value === 'ai') {
                     select.value = '🤖';
@@ -274,7 +257,6 @@ function setupGameScreen() {
     }
 }
 
-// --- 5. Turn Management & View Switching ---
 function setupTurnManagement() {
     document.getElementById('start-turn-btn').addEventListener('click', () => {
         document.getElementById('hold-screen').classList.add('hidden');
@@ -365,19 +347,18 @@ function executeInteractiveDraw() {
     }, 350);
 }
 
-// --- CHANGE 3: Clean Turn Routing & DOM Cleanup ---
 function showHoldScreen() {
-    // Clean up any lingering flying cards or drag ghosts between turns
     document.querySelectorAll('.card-flying').forEach(el => el.remove());
     activeDrag = null;
 
     const nextPlayer = gameState.players[gameState.currentPlayerIndex];
+    const previousPlayerIndex = (gameState.currentPlayerIndex - 1 + gameState.players.length) % gameState.players.length;
+    const previousPlayer = gameState.players[previousPlayerIndex];
     const humanPlayers = gameState.players.filter(p => !p.isAI);
 
     const readyBtn = document.getElementById('start-turn-btn');
     if (readyBtn) readyBtn.textContent = "Ready (Reveal Board)";
 
-    // AI directly goes to execution; no intermediate block screen
     if (nextPlayer.isAI) {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
@@ -385,15 +366,18 @@ function showHoldScreen() {
         return;
     }
 
-    // Single-player against bots: bypass pass-and-play screen completely
-    if (humanPlayers.length === 1) {
-        document.getElementById('hold-screen').classList.add('hidden');
-        document.getElementById('game-container').classList.remove('hidden');
-        startPlayerTurnUI();
-        return;
+    if (previousPlayer.isAI || humanPlayers.length === 1) {
+        SoundManager.play('turn');
+        triggerHaptic([50, 50]);
+        
+        if (humanPlayers.length === 1) {
+            document.getElementById('hold-screen').classList.add('hidden');
+            document.getElementById('game-container').classList.remove('hidden');
+            startPlayerTurnUI();
+            return;
+        }
     }
 
-    // MULTIPLAYER MODE: Show pass-and-play screen only when multiple local humans exist
     document.getElementById('game-container').classList.add('hidden');
     document.getElementById('hold-screen').classList.remove('hidden');
     
@@ -404,10 +388,12 @@ function showHoldScreen() {
     `;
     
     document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayer.name}. Tap below when ready!`;
-    SoundManager.play('turn'); 
+    
+    if (!previousPlayer.isAI && humanPlayers.length > 1) {
+        SoundManager.play('turn');
+    }
 }
 
-// --- 6. Win Screen & Round Rotation Controls ---
 function setupWinControls() {
     document.getElementById('play-again-btn').addEventListener('click', () => {
         const previousFirstPlayer = gameState.players.shift();
@@ -504,7 +490,6 @@ function showWinScreen(winnerName) {
     localStorage.removeItem('kingsCornerSave');
 }
 
-// --- 7. Rendering Functions ---
 function renderBoard() {
     document.getElementById('deck-count').textContent = gameState.deck.length;
     
@@ -563,7 +548,6 @@ function createCardElement(card) {
     return el;
 }
 
-// --- 8. Drag & Drop + Move Highlighting ---
 function makeDraggable(element, dragData) {
     element.addEventListener('pointerdown', (e) => {
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
@@ -712,7 +696,6 @@ function executeMove(targetPileKey) {
     saveGame();
 }
 
-// --- 9. Auto-Save & LocalStorage ---
 function saveGame() {
     if (!gameState.gameStarted) return;
     try {
@@ -747,7 +730,6 @@ function loadGame() {
     return false;
 }
 
-// --- 10. Undo System ---
 function saveSnapshot() {
     if (!gameState.undoEnabled) return;
     const snapshot = JSON.parse(JSON.stringify({
@@ -764,7 +746,6 @@ function saveSnapshot() {
 function performUndo() {
     if (gameState.history.length === 0) return;
     
-    // Force DOM cleanup on undo
     document.querySelectorAll('.card-flying').forEach(el => el.remove());
     activeDrag = null;
     
@@ -781,7 +762,6 @@ function performUndo() {
     startPlayerTurnUI(); 
 }
 
-// --- 11. Single-Player & Mixed-Bot AI Engine ---
 function checkAITurn() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (!currentPlayer.isAI) return;
@@ -792,7 +772,6 @@ function checkAITurn() {
     
     if (gameState.deck.length > 0) {
         currentPlayer.hand.push(gameState.deck.pop());
-        SoundManager.play('draw');
     }
 
     document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name} (Thinking...)`;
@@ -804,15 +783,13 @@ function checkAITurn() {
     }, 1500);
 }
 
-// --- CHANGE 2: Smart AI Pile Consolidation & Hand Strategy ---
 function executeAIMoves() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     let madeMove = false;
 
-    // 1. First Priority: Try to consolidate board piles to free up spaces or move Kings to corners
     for (const [sourceKey, sourcePile] of Object.entries(gameState.board)) {
         if (sourcePile.length === 0) continue;
-        const bottomCard = sourcePile[0]; // The root card of the stack being moved
+        const bottomCard = sourcePile[0];
 
         for (const [targetKey, targetPile] of Object.entries(gameState.board)) {
             if (sourceKey === targetKey) continue;
@@ -820,7 +797,6 @@ function executeAIMoves() {
 
             let canMovePile = false;
             if (targetPile.length === 0) {
-                // Only move a pile to an empty space if it's a King moving to an empty corner!
                 if (isCorner && bottomCard.value === 'K' && !['nw', 'ne', 'se', 'sw'].includes(sourceKey)) {
                     canMovePile = true;
                 }
@@ -843,7 +819,6 @@ function executeAIMoves() {
         if (madeMove) break;
     }
 
-    // 2. Second Priority: Play playable cards from the hand onto board piles
     if (!madeMove) {
         for (let i = 0; i < currentPlayer.hand.length; i++) {
             const card = currentPlayer.hand[i];
@@ -895,7 +870,6 @@ function executeAIMoves() {
     }
 }
 
-// --- 12. Register PWA Service Worker ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')

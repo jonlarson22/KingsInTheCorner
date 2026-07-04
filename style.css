@@ -78,10 +78,31 @@ body {
     padding: 12px 16px;
     background: rgba(0,0,0,0.25);
     border-radius: 12px;
-    margin: 0 auto 15px auto;
+    margin: 0 auto 8px auto;
     width: 100%;
     max-width: 500px;
     box-sizing: border-box;
+}
+
+.deck-status-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0 auto 10px auto;
+    width: fit-content;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.deck-status-bar strong {
+    color: #ffb300;
+    margin-left: 5px;
+    font-size: 0.95rem;
 }
 
 .header-info {

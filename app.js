@@ -261,11 +261,11 @@ function setupTurnManagement() {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         
-        // Draw card at the start of turn
+        // This is the human's draw
         if (gameState.deck.length > 0) {
             const drawnCard = gameState.deck.pop();
             gameState.players[gameState.currentPlayerIndex].hand.push(drawnCard);
-            SoundManager.play('draw'); // SOUND: Card draw sound on turn start
+            SoundManager.play('draw');
         }
         
         renderBoard();
@@ -288,12 +288,6 @@ function showHoldScreen() {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         
-        // Draw card at the start of ANY turn in single player
-        if (gameState.deck.length > 0) {
-            nextPlayer.hand.push(gameState.deck.pop());
-            SoundManager.play('draw'); // SOUND: Deal card in 1-player mode
-        }
-            
         renderBoard();
         renderHand();
             
@@ -676,7 +670,14 @@ function checkAITurn() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (!gameState.isSinglePlayer || !currentPlayer.isAI) return;
 
-    // NEW: Show AI icon while thinking
+    document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name} (Drawing...)`;
+    
+    // AI draws a card before thinking
+    if (gameState.deck.length > 0) {
+        currentPlayer.hand.push(gameState.deck.pop());
+        SoundManager.play('draw');
+    }
+
     document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name} (Thinking...)`;
     document.getElementById('end-turn-btn').disabled = true;
     document.getElementById('undo-btn').disabled = true;

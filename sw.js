@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kings-corner-v3'; 
+const CACHE_NAME = 'kings-corner-v3.1'; 
 
 const ASSETS = [
     './',
@@ -50,8 +50,9 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
         caches.match(e.request).then(res => {
             return res || fetch(e.request);
-        }).catch(() => {
+        }).catch(err => {
             console.warn('Fetch failed and not in cache:', e.request.url);
+            throw err; 
         })
     );
 });

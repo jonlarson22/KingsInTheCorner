@@ -529,12 +529,19 @@ function renderHand() {
     const currentPlayerObj = gameState.players[gameState.currentPlayerIndex];
     const currentHand = currentPlayerObj.hand;
 
-    // Blur / Hide cards if the active player is an AI (prevents card peeking when watching bots loop)
+    // If the current player is an AI, render individual card backs instead of faces
     if (currentPlayerObj.isAI) {
-        handEl.innerHTML = `<div style="text-align:center; padding:20px; opacity:0.5; font-style:italic;">[Thinking Hand Hidden]</div>`;
+        currentHand.forEach((_, index) => {
+            const cardBack = document.createElement('div');
+            cardBack.className = 'card card-back';
+            // Disable dragging and interactivity for AI cards
+            cardBack.style.pointerEvents = 'none'; 
+            handEl.appendChild(cardBack);
+        });
         return;
     }
 
+    // Render normal, draggable cards for human players
     currentHand.forEach((card, index) => {
         const cardEl = createCardElement(card);
         makeDraggable(cardEl, { type: 'hand', cardIndex: index });

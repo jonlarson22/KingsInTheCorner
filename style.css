@@ -324,3 +324,29 @@ body[data-theme="midnight-slate"] {
 .card.back {
     background: var(--card-back-bg);
 }
+
+/* --- Interactive Deck Draw Animations --- */
+
+/* Applied to the deck when the player must draw */
+.center-deck.can-draw {
+    cursor: pointer;
+}
+
+.center-deck.can-draw .card.back {
+    border: 3px solid #ffb300;
+    animation: deckPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes deckPulse {
+    0% { transform: scale(1); box-shadow: 0 0 8px rgba(255, 179, 0, 0.6); }
+    50% { transform: scale(1.06); box-shadow: 0 0 22px rgba(255, 179, 0, 1), 0 0 35px rgba(255, 179, 0, 0.6); }
+    100% { transform: scale(1); box-shadow: 0 0 8px rgba(255, 179, 0, 0.6); }
+}
+
+/* Optional: Flying card animation class */
+.card-flying {
+    position: fixed;
+    z-index: 10000;
+    pointer-events: none;
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.35s ease;
+}

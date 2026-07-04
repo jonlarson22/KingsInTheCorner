@@ -22,7 +22,6 @@ body {
     overflow-x: hidden;
 }
 
-/* Modal / Hold Screen */
 .modal {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -45,7 +44,6 @@ body {
 .modal-content h2 { margin-bottom: 1rem; font-size: 2rem; }
 .modal-content p { margin-bottom: 1.5rem; font-size: 1.1rem; opacity: 0.9; }
 
-/* Buttons */
 .btn {
     padding: 12px 24px;
     font-size: 1rem;
@@ -59,7 +57,6 @@ body {
 }
 .btn.primary { background: #ffb300; color: #000; }
 
-/* Main Layout */
 #game-container {
     display: flex;
     flex-direction: column;
@@ -72,7 +69,6 @@ body {
 
 .hidden { display: none !important; }
 
-/* --- Header Alignment (Stacked for Stability) --- */
 .game-header, header, .top-nav {
     display: flex;
     flex-direction: column;
@@ -120,7 +116,6 @@ body {
     }
 }
 
-/* 3x3 Board Grid */
 .board-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -146,13 +141,12 @@ body {
     width: 100%;
     height: 100%;
     min-height: 110px;
-    cursor: pointer; /* Indicates the entire box is clickable/draggable */
+    cursor: pointer;
 }
 
 .pile.corner { background: rgba(0, 0, 0, 0.15); }
 .pile-label { font-size: 2rem; font-weight: bold; opacity: 0.2; position: absolute; }
 
-/* --- Center Deck Slot vs Card Styling --- */
 #center-deck, .center-deck {
     background: rgba(0, 0, 0, 0.15);
     border: 2px dashed rgba(255, 255, 255, 0.2);
@@ -164,7 +158,6 @@ body {
     height: 100%;
 }
 
-/* Card Styling */
 .card {
     width: var(--card-width);
     height: var(--card-height);
@@ -186,7 +179,6 @@ body {
 .card.red { color: #d32f2f; }
 .card.black { color: #212121; }
 
-/* Apply blue striped pattern ONLY to the deck card inside the slot */
 .card.back, .card-back, .deck-card {
     background: repeating-linear-gradient(
         45deg,
@@ -223,14 +215,12 @@ body {
 .card-center { align-self: center; font-size: 1.5rem; }
 .card-bottom-right { align-self: flex-end; line-height: 1; transform: rotate(180deg); }
 
-/* Compact Accordion Stacking on Piles */
 .pile .card { 
     position: absolute; 
     top: 0; 
     left: calc(50% - (var(--card-width) / 2)); 
 }
 
-/* --- Responsive Hand Container --- */
 .hand-container {
     min-height: 130px;
     display: flex;
@@ -242,7 +232,7 @@ body {
 
 .hand, #player-hand {
     display: flex;
-    flex-wrap: wrap; /* Allows cards to wrap to a second line instead of running off screen */
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
     gap: 8px;
@@ -257,7 +247,6 @@ body {
     flex-shrink: 0;
 }
 
-/* Scale down cards in the hand on smaller screens to prevent overflow */
 @media (max-width: 600px) {
     #player-hand .card {
         width: clamp(45px, 12vw, 60px);
@@ -269,7 +258,6 @@ body {
     }
 }
 
-/* Drag Ghost */
 #drag-ghost {
     position: fixed;
     z-index: 9999;
@@ -278,7 +266,6 @@ body {
     box-shadow: 0 14px 28px rgba(0,0,0,0.45), 0 10px 10px rgba(0,0,0,0.38);
 }
 
-/* Form Controls for Setup Screen */
 .form-group {
     margin-bottom: 1.5rem;
     text-align: left;
@@ -318,7 +305,6 @@ body {
     gap: 10px;
 }
 
-/* Win Screen Styling */
 .win-content {
     border: 3px solid #ffb300;
     background: linear-gradient(135deg, #1b5e20, #2e7d32);
@@ -346,7 +332,6 @@ body {
     font-size: 1.1rem;
 }
 
-/* Move Highlighting: Glows when a dragged card can legally drop here */
 .pile.valid-target {
     border-color: #00e676 !important;
     background: rgba(0, 230, 118, 0.2) !important;
@@ -355,7 +340,6 @@ body {
     transition: all 0.15s ease-in-out;
 }
 
-/* Checkbox styling */
 .checkbox-group label {
     display: flex;
     align-items: center;
@@ -370,7 +354,6 @@ body {
     accent-color: #ffb300;
 }
 
-/* Elevate and scale the card when picked up */
 .card.dragging {
     transform: scale(1.08) rotate(3deg);
     box-shadow: 0 14px 28px rgba(0,0,0,0.45), 0 10px 10px rgba(0,0,0,0.38);
@@ -378,7 +361,6 @@ body {
     cursor: grabbing;
 }
 
-/* Subtle entrance animation when cards are dealt or played */
 @keyframes cardSnap {
     0% { transform: scale(0.95); opacity: 0.8; }
     50% { transform: scale(1.02); }
@@ -389,7 +371,6 @@ body {
     animation: cardSnap 0.18s ease-out forwards;
 }
 
-/* --- Theme Support --- */
 body[data-theme="green-felt"] {
     --table-bg: #076324;
     --table-pattern: radial-gradient(#0a7e2e 15%, transparent 16%);
@@ -411,7 +392,6 @@ body[data-theme="midnight-slate"] {
     background-size: 30px 30px;
 }
 
-/* --- Interactive Deck Draw Animations --- */
 .center-deck.can-draw {
     cursor: pointer;
 }
@@ -429,7 +409,6 @@ body[data-theme="midnight-slate"] {
     100% { transform: scale(1); box-shadow: 0 0 8px rgba(255, 179, 0, 0.6); }
 }
 
-/* Flying card animation class */
 .card-flying {
     position: fixed;
     z-index: 10000;

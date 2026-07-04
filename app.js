@@ -490,6 +490,35 @@ function showWinScreen(winnerName) {
     localStorage.removeItem('kingsCornerSave');
 }
 
+/**
+ * Renders a stack of cards with dynamic vertical compression to prevent UI overflow.
+ * @param {HTMLElement} container - The DOM element representing the pile.
+ * @param {Array} cardArray - Array of card objects in this pile.
+ * @param {String} pileKey - The dictionary key for the pile (e.g., 'north', 'nw').
+ */
+function renderCardStack(container, cardArray, pileKey) {
+    const label = container.querySelector('.pile-label');
+    container.innerHTML = '';
+    if (label && cardArray.length === 0) {
+        container.appendChild(label);
+        return;
+    }
+
+    const maxExpansion = 110; 
+    const step = cardArray.length > 1 
+        ? Math.min(15, maxExpansion / (cardArray.length - 1)) 
+        : 0;
+
+    cardArray.forEach((card, index) => {
+        const cardEl = createCardElement(card);
+        cardEl.style.top = `${index * step}px`;
+
+        makeDraggable(cardEl, { type: 'pile', pileKey: pileKey, cardIndex: index });
+        
+        container.appendChild(cardEl);
+    });
+}
+
 function renderBoard() {
     document.getElementById('deck-count').textContent = gameState.deck.length;
     
@@ -498,19 +527,9 @@ function renderBoard() {
 
     for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
         const pileEl = document.getElementById(`pile-${pileKey}`);
-        const label = pileEl.querySelector('.pile-label');
-        pileEl.innerHTML = '';
-        if (label && pileArray.length === 0) pileEl.appendChild(label);
-
-        pileArray.forEach((card, index) => {
-            const cardEl = createCardElement(card);
-            cardEl.style.top = `${index * 15}px`;
-            
-            if (index === pileArray.length - 1) {
-                makeDraggable(cardEl, { type: 'pile', pileKey: pileKey, cardIndex: index });
-            }
-            pileEl.appendChild(cardEl);
-        });
+        if (pileEl) {
+            renderCardStack(pileEl, pileArray, pileKey);
+        }
     }
 }
 
@@ -638,23 +657,26 @@ function onPointerUp(e) {
     const pileEl = dropTarget ? dropTarget.closest('.pile') : null;
     let moveSuccessful = false;
 
-    if (pileEl) {
-        const targetPileKey = pileEl.dataset.pile;
-        const targetPile = gameState.board[targetPileKey];
-        const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetPileKey);
-
-        if (targetPile.length === 0 && isCorner && activeDrag.card.value !== 'K') {
-            console.log("Only Kings can be placed in empty corner piles!");
-        } 
-        else if (targetPile.length === 0 && !isCorner) {
-            executeMove(targetPileKey);
-            moveSuccessful = true;
-        }
-        else if (isValidMove(activeDrag.card, targetPile)) {
-            executeMove(targetPileKey);
-            moveSuccessful = true;
-        }
+    if (pileEl && pileEl.dataset.pile) {
+    const targetPileKey = pileEl.dataset.pile;
+    if (activeDrag.data.type === 'pile' && activeDrag.data.pileKey === targetPileKey) {
+        return;
     }
+    const targetPile = gameState.board[targetPileKey];
+    const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetPileKey);
+
+    if (targetPile.length === 0 && isCorner && activeDrag.card.value !== 'K') {
+        console.log("Only Kings can be placed in empty corner piles!");
+    } 
+    else if (targetPile.length === 0 && !isCorner) {
+        executeMove(targetPileKey);
+        moveSuccessful = true;
+    }
+    else if (isValidMove(activeDrag.card, targetPile)) {
+        executeMove(targetPileKey);
+        moveSuccessful = true;
+    }
+}
 
     if (!moveSuccessful && pileEl) {
         SoundManager.play('invalidDrop');

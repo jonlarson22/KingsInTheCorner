@@ -72,18 +72,52 @@ body {
 
 .hidden { display: none !important; }
 
-/* Header Alignment */
+/* --- Header Alignment (Stacked for Stability) --- */
 .game-header, header, .top-nav {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    padding: 10px 15px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 8px;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 12px;
     margin: 0 auto 15px auto;
     width: 100%;
     max-width: 500px;
     box-sizing: border-box;
+}
+
+.header-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    text-align: center;
+}
+
+.status-badge {
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: normal;
+}
+
+.header-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+@media (min-width: 768px) {
+    .game-header, header, .top-nav {
+        flex-direction: row;
+        justify-content: space-between;
+    }
 }
 
 /* 3x3 Board Grid */
@@ -118,7 +152,11 @@ body {
 .pile.corner { background: rgba(0, 0, 0, 0.15); }
 .pile-label { font-size: 2rem; font-weight: bold; opacity: 0.2; position: absolute; }
 
-.center-deck {
+/* --- Center Deck Slot vs Card Styling --- */
+#center-deck, .center-deck {
+    background: rgba(0, 0, 0, 0.15);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -148,8 +186,8 @@ body {
 .card.red { color: #d32f2f; }
 .card.black { color: #212121; }
 
-/* --- Unified Card Back / Center Deck Branding --- */
-.card.back, .card-back, #center-deck {
+/* Apply blue striped pattern ONLY to the deck card inside the slot */
+.card.back, .card-back, .deck-card {
     background: repeating-linear-gradient(
         45deg,
         #1e3a8a,
@@ -168,7 +206,7 @@ body {
     border-radius: 6px;
 }
 
-#center-deck::after, .card-back::after, .card.back::after {
+.card-back::after, .card.back::after, .deck-card::after {
     content: "👑";
     font-size: 1.8rem;
     background: rgba(255, 255, 255, 0.9);
@@ -192,7 +230,7 @@ body {
     left: calc(50% - (var(--card-width) / 2)); 
 }
 
-/* --- Responsive Hand Container (Wraps cleanly on mobile) --- */
+/* --- Responsive Hand Container --- */
 .hand-container {
     min-height: 130px;
     display: flex;
@@ -211,11 +249,24 @@ body {
     margin: 0 auto;
     padding: 0 10px;
     max-width: 100%;
+    box-sizing: border-box;
 }
 
 .hand .card, #player-hand .card {
     position: relative;
     flex-shrink: 0;
+}
+
+/* Scale down cards in the hand on smaller screens to prevent overflow */
+@media (max-width: 600px) {
+    #player-hand .card {
+        width: clamp(45px, 12vw, 60px);
+        height: clamp(63px, 16.8vw, 84px);
+        font-size: clamp(0.7rem, 2.5vw, 0.9rem);
+    }
+    #player-hand {
+        gap: 4px;
+    }
 }
 
 /* Drag Ghost */
@@ -366,6 +417,7 @@ body[data-theme="midnight-slate"] {
 }
 
 .center-deck.can-draw .card.back, 
+.center-deck.can-draw .deck-card,
 .center-deck.can-draw.card-back {
     border: 3px solid #ffb300 !important;
     animation: deckPulse 1.2s infinite ease-in-out;

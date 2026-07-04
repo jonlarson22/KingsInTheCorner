@@ -21,7 +21,7 @@
                 <select id="player-count" class="input-control">
                     <option value="2">2 Players</option>
                     <option value="3">3 Players</option>
-                    <option value="4">4 Players</option>
+                    <option value="4" selected>4 Players</option>
                 </select>
             </div>
 
@@ -59,7 +59,7 @@
             </div>
 
             <div id="name-inputs-container">
-                </div>
+            </div>
 
             <button id="start-game-btn" class="btn primary">Start Game</button>
         </div>
@@ -87,8 +87,11 @@
     
     <div id="game-container" class="hidden">
         <header class="game-header">
-            <h3 id="current-player-display">Player 1</h3>
-            <div class="controls">
+            <div class="header-info">
+                <span id="current-player-display">Player 1</span>
+                <span id="bot-status" class="status-badge hidden">Thinking...</span>
+            </div>
+            <div class="header-controls">
                 <button id="undo-btn" class="btn hidden">Undo</button>
                 <button id="end-turn-btn" class="btn">End Turn</button>
                 <button id="quit-btn" class="btn" style="background: #ef5350; color: white;">Quit</button>
@@ -102,7 +105,7 @@
             
             <div class="pile standard" data-pile="west" id="pile-west"></div>
             <div class="center-deck" id="center-deck">
-                <div class="card back">DECK<br><span id="deck-count">0</span></div>
+                <div class="card back deck-card">DECK<br><span id="deck-count">0</span></div>
             </div>
             <div class="pile standard" data-pile="east" id="pile-east"></div>
             

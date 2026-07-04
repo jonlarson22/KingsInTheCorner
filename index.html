@@ -86,7 +86,7 @@
     </div>
     
     <div id="game-container" class="hidden">
-        <header class="game-header">
+       <header class="game-header">
             <div class="header-info">
                 <span id="current-player-display">Player 1</span>
                 <span id="bot-status" class="status-badge hidden">Thinking...</span>
@@ -98,6 +98,10 @@
             </div>
         </header>
 
+        <div class="deck-status-bar">
+            <span>Draw Pile: <strong id="deck-count">0</strong></span>
+        </div>
+
         <main class="board-grid">
             <div class="pile corner" data-pile="nw" id="pile-nw"><span class="pile-label">K</span></div>
             <div class="pile standard" data-pile="north" id="pile-north"></div>
@@ -105,7 +109,7 @@
             
             <div class="pile standard" data-pile="west" id="pile-west"></div>
             <div class="center-deck" id="center-deck">
-                <div class="card back deck-card">DECK<br><span id="deck-count">0</span></div>
+                <div class="card back deck-card"></div>
             </div>
             <div class="pile standard" data-pile="east" id="pile-east"></div>
             

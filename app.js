@@ -66,7 +66,7 @@ function initGame(playersData, existingPlayers = null) {
             icon: data.icon || '👤', 
             hand: [],
             score: 0,
-            isAI: data.isAI // Populated dynamically from setup fields
+            isAI: data.isAI
         }));
     }
     
@@ -174,6 +174,7 @@ function setupGameScreen() {
         });
     }
 
+    // --- CHANGE 1: Intelligent Defaults for 2-Player (vs AI) ---
     const renderInputFields = (count) => {
         container.innerHTML = '';
         for (let i = 1; i <= count; i++) {
@@ -202,7 +203,7 @@ function setupGameScreen() {
             input.placeholder = `Player ${i} Name`;
             input.value = i === 1 ? 'Player 1' : `Bot ${i - 1}`;
             
-            // NEW: Player Type Dropdown (Human vs. Bot)
+            // Player Type Dropdown (Human vs. Bot)
             const typeSelect = document.createElement('select');
             typeSelect.className = 'input-control player-type-select';
             typeSelect.style.cssText = 'width: 100px; cursor: pointer; font-weight: bold;';
@@ -210,13 +211,14 @@ function setupGameScreen() {
                 <option value="human">Human</option>
                 <option value="ai">Bot 🤖</option>
             `;
-            // Default player 1 to human, subsequent slots default to Bot for quick setups
+            
+            // Default Player 1 to Human. Default subsequent players to Bot for fast setup!
             if (i > 1) {
                 typeSelect.value = 'ai';
                 select.value = '🤖';
             }
 
-            // Sync icon dynamically if they choose Bot without picking an icon
+            // Sync icon and name dynamically when type changes
             typeSelect.addEventListener('change', (e) => {
                 if (e.target.value === 'ai') {
                     select.value = '🤖';
@@ -363,31 +365,35 @@ function executeInteractiveDraw() {
     }, 350);
 }
 
+// --- CHANGE 3: Clean Turn Routing & DOM Cleanup ---
 function showHoldScreen() {
+    // Clean up any lingering flying cards or drag ghosts between turns
+    document.querySelectorAll('.card-flying').forEach(el => el.remove());
+    activeDrag = null;
+
     const nextPlayer = gameState.players[gameState.currentPlayerIndex];
     const humanPlayers = gameState.players.filter(p => !p.isAI);
 
     const readyBtn = document.getElementById('start-turn-btn');
     if (readyBtn) readyBtn.textContent = "Ready (Reveal Board)";
 
-    // --- NEW: INTELLIGENT AI & SINGLE-HUMAN ROUTING ---
+    // AI directly goes to execution; no intermediate block screen
     if (nextPlayer.isAI) {
-        // AI directly goes to execution; no intermediate block screen
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         checkAITurn();
         return;
     }
 
+    // Single-player against bots: bypass pass-and-play screen completely
     if (humanPlayers.length === 1) {
-        // You're the only physical human playing against bots; clear screen pass blocks!
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         startPlayerTurnUI();
         return;
     }
 
-    // --- MULTIPLAYER MODE (Triggered only when multiple local humans exist) ---
+    // MULTIPLAYER MODE: Show pass-and-play screen only when multiple local humans exist
     document.getElementById('game-container').classList.add('hidden');
     document.getElementById('hold-screen').classList.remove('hidden');
     
@@ -529,19 +535,16 @@ function renderHand() {
     const currentPlayerObj = gameState.players[gameState.currentPlayerIndex];
     const currentHand = currentPlayerObj.hand;
 
-    // If the current player is an AI, render individual card backs instead of faces
     if (currentPlayerObj.isAI) {
-        currentHand.forEach((_, index) => {
+        currentHand.forEach(() => {
             const cardBack = document.createElement('div');
             cardBack.className = 'card card-back';
-            // Disable dragging and interactivity for AI cards
             cardBack.style.pointerEvents = 'none'; 
             handEl.appendChild(cardBack);
         });
         return;
     }
 
-    // Render normal, draggable cards for human players
     currentHand.forEach((card, index) => {
         const cardEl = createCardElement(card);
         makeDraggable(cardEl, { type: 'hand', cardIndex: index });
@@ -607,7 +610,6 @@ function makeDraggable(element, dragData) {
     });
 }
 
-// (Remaining drag highlights and execution stay identical to preserve rule stability)
 function highlightValidMoves(cardObj, dragType) {
     for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
         const pileEl = document.getElementById(`pile-${pileKey}`);
@@ -761,6 +763,11 @@ function saveSnapshot() {
 
 function performUndo() {
     if (gameState.history.length === 0) return;
+    
+    // Force DOM cleanup on undo
+    document.querySelectorAll('.card-flying').forEach(el => el.remove());
+    activeDrag = null;
+    
     const previousState = gameState.history.pop();
     
     gameState.deck = previousState.deck;
@@ -792,44 +799,81 @@ function checkAITurn() {
     document.getElementById('end-turn-btn').disabled = true;
     document.getElementById('undo-btn').disabled = true;
 
-    // SLOWED: Increased initialization delay from 800ms to 1500ms to allow text-reading
     setTimeout(() => {
         executeAIMoves();
     }, 1500);
 }
 
+// --- CHANGE 2: Smart AI Pile Consolidation & Hand Strategy ---
 function executeAIMoves() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     let madeMove = false;
 
-    for (let i = 0; i < currentPlayer.hand.length; i++) {
-        const card = currentPlayer.hand[i];
-        
-        for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
-            const isCorner = ['nw', 'ne', 'se', 'sw'].includes(pileKey);
-            let legal = false;
+    // 1. First Priority: Try to consolidate board piles to free up spaces or move Kings to corners
+    for (const [sourceKey, sourcePile] of Object.entries(gameState.board)) {
+        if (sourcePile.length === 0) continue;
+        const bottomCard = sourcePile[0]; // The root card of the stack being moved
 
-            if (pileArray.length === 0) {
-                if (isCorner && card.value === 'K') legal = true;
-                else if (!isCorner) legal = true; // AI handles non-corner spaces legally
-            } else if (isValidMove(card, pileArray)) {
-                legal = true;
+        for (const [targetKey, targetPile] of Object.entries(gameState.board)) {
+            if (sourceKey === targetKey) continue;
+            const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetKey);
+
+            let canMovePile = false;
+            if (targetPile.length === 0) {
+                // Only move a pile to an empty space if it's a King moving to an empty corner!
+                if (isCorner && bottomCard.value === 'K' && !['nw', 'ne', 'se', 'sw'].includes(sourceKey)) {
+                    canMovePile = true;
+                }
+            } else if (isValidMove(bottomCard, targetPile)) {
+                canMovePile = true;
             }
 
-            if (legal) {
+            if (canMovePile) {
                 saveSnapshot();
-                currentPlayer.hand.splice(i, 1);
-                gameState.board[pileKey].push(card);
+                const cardsToMove = gameState.board[sourceKey].splice(0);
+                gameState.board[targetKey].push(...cardsToMove);
                 
                 SoundManager.play('validDrop'); 
                 triggerHaptic(10);
                 renderBoard();
-                renderHand();
                 madeMove = true;
                 break;
             }
         }
-        if (madeMove) break; 
+        if (madeMove) break;
+    }
+
+    // 2. Second Priority: Play playable cards from the hand onto board piles
+    if (!madeMove) {
+        for (let i = 0; i < currentPlayer.hand.length; i++) {
+            const card = currentPlayer.hand[i];
+            
+            for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
+                const isCorner = ['nw', 'ne', 'se', 'sw'].includes(pileKey);
+                let legal = false;
+
+                if (pileArray.length === 0) {
+                    if (isCorner && card.value === 'K') legal = true;
+                    else if (!isCorner) legal = true; 
+                } else if (isValidMove(card, pileArray)) {
+                    legal = true;
+                }
+
+                if (legal) {
+                    saveSnapshot();
+                    currentPlayer.hand.splice(i, 1);
+                    gameState.board[pileKey].push(card);
+                    
+                    SoundManager.play('validDrop'); 
+                    triggerHaptic(10);
+                    renderBoard();
+                    renderHand();
+                    madeMove = true;
+                    break;
+                }
+            }
+            if (madeMove) break; 
+        }
     }
 
     if (currentPlayer.hand.length === 0) {
@@ -838,10 +882,8 @@ function executeAIMoves() {
     }
 
     if (madeMove) {
-        // SLOWED: Increased iterative step delay from 600ms to 1600ms so humans can track placement sequences
         setTimeout(executeAIMoves, 1600); 
     } else {
-        // SLOWED: Shifted end-turn cool-off from 500ms to 1200ms
         setTimeout(() => {
             document.getElementById('end-turn-btn').disabled = false;
             document.getElementById('undo-btn').disabled = false;

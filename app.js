@@ -5,7 +5,6 @@ const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
 const PLAYER_ICONS = ['👑', '🤖', '🃏', '🦊', '🤠', '🏴‍☠️', '🧙‍♂️', '🥷', '🦁', '🐉', '👾', '🎲'];
 
 // --- SOUND: Modular Sound Effects Engine ---
-// Place your audio files inside a './sounds/' folder in your project directory
 const SoundManager = {
     enabled: true,
     sounds: {
@@ -19,11 +18,8 @@ const SoundManager = {
     play(effectName) {
         if (!this.enabled || !this.sounds[effectName]) return;
         try {
-            // Reset time to 0 so fast consecutive sounds overlap cleanly
             this.sounds[effectName].currentTime = 0;
-            this.sounds[effectName].play().catch(() => {
-                // Silently catches browser autoplay restrictions or missing files
-            });
+            this.sounds[effectName].play().catch(() => {});
         } catch (e) { console.warn("Audio engine error:", e); }
     }
 };
@@ -42,6 +38,7 @@ let gameState = {
     gameMode: 'casual',
     tournamentLimit: 100,
     undoEnabled: true,
+    hasDrawnThisTurn: false, // NEW: Tracks if current player has tapped the deck
     history: []
 };
 
@@ -55,22 +52,19 @@ function triggerHaptic(ms = 15) {
 }
 
 // --- 1. Initialize the Game ---
-// NEW: Changed parameter from playerNames to playersData (array of objects with name and icon)
 function initGame(playersData, existingPlayers = null) {
     gameState.deck = createDeck();
     shuffle(gameState.deck);
     
-    // If resuming/playing another round, keep existing score totals and icons!
     if (existingPlayers) {
         gameState.players = existingPlayers.map(p => ({
             ...p,
-            hand: [] // Clear hands for the new round
+            hand: [] 
         }));
     } else {
-        // Fresh game setup
         gameState.players = playersData.map((data, idx) => ({ 
             name: data.name, 
-            icon: data.icon || '👤', // NEW: Assign chosen icon
+            icon: data.icon || '👤', 
             hand: [],
             score: 0,
             isAI: (gameState.isSinglePlayer && idx > 0)
@@ -78,6 +72,7 @@ function initGame(playersData, existingPlayers = null) {
     }
     
     gameState.currentPlayerIndex = 0;
+    gameState.hasDrawnThisTurn = false; // Reset draw state for turn 1
     
     // Deal 7 cards to each player
     for (let i = 0; i < 7; i++) {
@@ -105,7 +100,7 @@ function createDeck() {
     for (let suit of SUITS) {
         for (let value of VALUES) {
             let color = (suit === '♥' || suit === '♦') ? 'red' : 'black';
-            let rank = VALUES.indexOf(value) + 1; // A=1, J=11, Q=12, K=13
+            let rank = VALUES.indexOf(value) + 1;
             deck.push({ suit, value, color, rank });
         }
     }
@@ -122,7 +117,7 @@ function shuffle(deck) {
 // --- 3. Rule Validator ---
 function isValidMove(card, targetPile) {
     if (targetPile.length === 0) {
-        return card.value === 'K'; // Kings ONLY in empty corners
+        return card.value === 'K'; 
     }
     const topCard = targetPile[targetPile.length - 1];
     const isOppositeColor = card.color !== topCard.color;
@@ -180,7 +175,6 @@ function setupGameScreen() {
         });
     }
 
-    // NEW: Build rows containing BOTH an icon dropdown and a name input
     const renderInputFields = (count) => {
         container.innerHTML = '';
         for (let i = 1; i <= count; i++) {
@@ -188,7 +182,6 @@ function setupGameScreen() {
             row.className = 'player-input-row';
             row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
             
-            // Icon Picker
             const select = document.createElement('select');
             select.className = 'input-control player-icon-select';
             select.style.cssText = 'width: 75px; font-size: 1.3rem; text-align: center; cursor: pointer;';
@@ -197,12 +190,10 @@ function setupGameScreen() {
                 const opt = document.createElement('option');
                 opt.value = icon;
                 opt.textContent = icon;
-                // Default each player to a different starting icon in the array
                 if (idx === (i - 1) % PLAYER_ICONS.length) opt.selected = true;
                 select.appendChild(opt);
             });
 
-            // Name Input
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'input-control player-name-input';
@@ -226,7 +217,6 @@ function setupGameScreen() {
         document.getElementById('start-game-btn').addEventListener('click', () => {
             const rows = container.querySelectorAll('.player-input-row');
             
-            // NEW: Gather both name and chosen icon for each player
             const playersData = Array.from(rows).map((row, index) => {
                 const name = row.querySelector('.player-name-input').value.trim() || `Player ${index + 1}`;
                 const icon = row.querySelector('.player-icon-select').value;
@@ -257,43 +247,118 @@ function setupGameScreen() {
 
 // --- 5. Turn Management & View Switching ---
 function setupTurnManagement() {
+    // NEW: "Ready" button simply reveals the board. Player draws by clicking the deck!
     document.getElementById('start-turn-btn').addEventListener('click', () => {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         
-        // This is the human's draw
-        if (gameState.deck.length > 0) {
-            const drawnCard = gameState.deck.pop();
-            gameState.players[gameState.currentPlayerIndex].hand.push(drawnCard);
-            SoundManager.play('draw');
-        }
-        
-        renderBoard();
-        renderHand();
-        saveGame();
+        startPlayerTurnUI();
     });
 
     document.getElementById('end-turn-btn').addEventListener('click', () => {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+        gameState.hasDrawnThisTurn = false; // Reset for next player
         saveGame();
         showHoldScreen();
     });
+
+    // NEW: Wire up the center deck click for interactive drawing
+    document.getElementById('center-deck').addEventListener('click', () => {
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        if (gameState.hasDrawnThisTurn || gameState.deck.length === 0 || currentPlayer.isAI) {
+            return;
+        }
+        executeInteractiveDraw();
+    });
+}
+
+// NEW: Sets up the visual cues (glow, disabled End Turn) before drawing
+function startPlayerTurnUI() {
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    const deckEl = document.getElementById('center-deck');
+    const endTurnBtn = document.getElementById('end-turn-btn');
+
+    if (gameState.deck.length === 0 || currentPlayer.isAI) {
+        gameState.hasDrawnThisTurn = true;
+        deckEl.classList.remove('can-draw');
+        endTurnBtn.disabled = false;
+    } else if (!gameState.hasDrawnThisTurn) {
+        deckEl.classList.add('can-draw');
+        endTurnBtn.disabled = true; // Gate ending turn until card is drawn
+    } else {
+        deckEl.classList.remove('can-draw');
+        endTurnBtn.disabled = false;
+    }
+
+    renderBoard();
+    renderHand();
+    saveGame();
+}
+
+// NEW: Animates card flying from center deck to player hand
+function executeInteractiveDraw() {
+    if (gameState.deck.length === 0) return;
+
+    gameState.hasDrawnThisTurn = true;
+    const deckEl = document.getElementById('center-deck');
+    const endTurnBtn = document.getElementById('end-turn-btn');
+
+    deckEl.classList.remove('can-draw');
+    endTurnBtn.disabled = false;
+
+    const drawnCard = gameState.deck.pop();
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
+    // --- Flying Card Animation ---
+    const deckRect = deckEl.getBoundingClientRect();
+    const handRect = document.getElementById('player-hand').getBoundingClientRect();
+
+    const ghost = createCardElement(drawnCard);
+    ghost.classList.add('card-flying');
+    ghost.style.left = `${deckRect.left}px`;
+    ghost.style.top = `${deckRect.top}px`;
+    document.body.appendChild(ghost);
+
+    SoundManager.play('draw');
+    triggerHaptic(20);
+
+    // Force DOM reflow to trigger CSS transition cleanly
+    ghost.getBoundingClientRect();
+
+    // Target the center of the hand container
+    const targetX = handRect.left + (handRect.width / 2) - 35;
+    const targetY = handRect.top + 10;
+    ghost.style.left = `${targetX}px`;
+    ghost.style.top = `${targetY}px`;
+    ghost.style.transform = 'scale(1.05) rotate(360deg)';
+
+    setTimeout(() => {
+        if (ghost && ghost.parentNode) {
+            ghost.parentNode.removeChild(ghost);
+        }
+        currentPlayer.hand.push(drawnCard);
+        renderBoard();
+        renderHand();
+        saveGame();
+    }, 350);
 }
 
 function showHoldScreen() {
     const nextPlayer = gameState.players[gameState.currentPlayerIndex];
+
+    // Dynamically update button text without modifying HTML
+    const readyBtn = document.getElementById('start-turn-btn');
+    if (readyBtn) readyBtn.textContent = "Ready (Reveal Board)";
 
     // --- SINGLE PLAYER MODE HANDLING ---
     if (gameState.isSinglePlayer) {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
         
-        renderBoard();
-        renderHand();
-            
-        // If the turn just shifted to the AI, let it think!
         if (nextPlayer.isAI) {
             checkAITurn();
+        } else {
+            startPlayerTurnUI();
         }
         return;
     }
@@ -309,7 +374,7 @@ function showHoldScreen() {
     `;
     
     document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayer.name}. Tap below when ready!`;
-    SoundManager.play('turn'); // SOUND: Turn notification chime
+    SoundManager.play('turn'); 
 }
 
 // --- 6. Win Screen & Round Rotation Controls ---
@@ -361,7 +426,6 @@ function showWinScreen(winnerName) {
         player.score = (player.score || 0) + handPenalty;
         
         const isWinner = player.hand.length === 0;
-        // NEW: Show player icon next to their name on the scoreboard
         html += `
             <tr>
                 <td><span style="font-size: 1.2rem; margin-right: 6px;">${player.icon}</span><strong>${player.name}</strong> ${isWinner ? '👑' : ''}</td>
@@ -385,16 +449,16 @@ function showWinScreen(winnerName) {
             playAgainBtn.textContent = "Start New Tournament 🏆";
             html += `<p style="font-size: 0.85rem; margin-top: 8px; color: #ffeb3b;">*Someone hit ${TOURNAMENT_LIMIT} points! Lowest total score wins the tournament!*</p>`;
             
-            SoundManager.play('tournamentWin'); // SOUND: Grand Champion sound!
+            SoundManager.play('tournamentWin');
         } else {
             playAgainBtn.textContent = "Deal Next Hand 🔀";
             html += `<p style="font-size: 0.8rem; margin-top: 8px; opacity: 0.8;">*Tournament Mode: Playing until someone reaches ${TOURNAMENT_LIMIT} points.*</p>`;
             
-            SoundManager.play('roundWin'); // SOUND: Hand round win sound
+            SoundManager.play('roundWin');
         }
     } else {
         playAgainBtn.textContent = "Play Again 🔄";
-        SoundManager.play('roundWin'); // SOUND: Casual round win sound
+        SoundManager.play('roundWin');
     }
     
     gameState.isTournamentOver = isTournamentOver;
@@ -414,7 +478,6 @@ function showWinScreen(winnerName) {
 function renderBoard() {
     document.getElementById('deck-count').textContent = gameState.deck.length;
     
-    // NEW: Display icon next to name on the live board header
     const currentP = gameState.players[gameState.currentPlayerIndex];
     document.getElementById('current-player-display').textContent = `${currentP.icon} ${currentP.name}`;
 
@@ -462,6 +525,17 @@ function createCardElement(card) {
 // --- 8. Drag & Drop + Move Highlighting ---
 function makeDraggable(element, dragData) {
     element.addEventListener('pointerdown', (e) => {
+        // NEW: Enforce drawing a card before interacting with the board!
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        if (!gameState.hasDrawnThisTurn && !currentPlayer.isAI && gameState.deck.length > 0) {
+            const deckEl = document.getElementById('center-deck');
+            deckEl.style.transform = 'scale(1.15)';
+            setTimeout(() => deckEl.style.transform = '', 150);
+            SoundManager.play('invalidDrop');
+            triggerHaptic([30, 30]);
+            return;
+        }
+
         e.preventDefault();
         
         let cardObj;
@@ -558,10 +632,9 @@ function onPointerUp(e) {
         }
     }
 
-    // SOUND & HAPTIC: Play error sound if card was dropped in an invalid spot
     if (!moveSuccessful && pileEl) {
         SoundManager.play('invalidDrop');
-        triggerHaptic([30, 30, 30]); // Error buzz
+        triggerHaptic([30, 30, 30]); 
     }
 
     activeDrag = null;
@@ -585,7 +658,7 @@ function executeMove(targetPileKey) {
         }
     }
 
-    SoundManager.play('validDrop'); // SOUND: Card placed successfully
+    SoundManager.play('validDrop'); 
     triggerHaptic(15);
 
     if (gameState.players[gameState.currentPlayerIndex].hand.length === 0) {
@@ -623,9 +696,11 @@ function loadGame() {
                     if (gameState.undoEnabled) undoBtn.classList.remove('hidden');
                     else undoBtn.classList.add('hidden');
                     
-                    renderBoard();
-                    renderHand();
-                    checkAITurn();
+                    if (gameState.players[gameState.currentPlayerIndex].isAI) {
+                        checkAITurn();
+                    } else {
+                        startPlayerTurnUI();
+                    }
                     return true;
                 } else {
                     localStorage.removeItem('kingsCornerSave');
@@ -643,7 +718,8 @@ function saveSnapshot() {
         deck: gameState.deck,
         players: gameState.players,
         currentPlayerIndex: gameState.currentPlayerIndex,
-        board: gameState.board
+        board: gameState.board,
+        hasDrawnThisTurn: gameState.hasDrawnThisTurn // NEW: Preserve draw state on undo
     }));
     gameState.history.push(snapshot);
     if (gameState.history.length > 15) gameState.history.shift(); 
@@ -657,12 +733,11 @@ function performUndo() {
     gameState.players = previousState.players;
     gameState.currentPlayerIndex = previousState.currentPlayerIndex;
     gameState.board = previousState.board;
+    gameState.hasDrawnThisTurn = previousState.hasDrawnThisTurn !== undefined ? previousState.hasDrawnThisTurn : true;
     
-    SoundManager.play('draw'); // SOUND: Play draw/swish sound on undo
+    SoundManager.play('draw'); 
     triggerHaptic(20);
-    renderBoard();
-    renderHand();
-    saveGame();
+    startPlayerTurnUI(); // NEW: Restores proper deck glow & button states after undo
 }
 
 // --- 11. Single-Player AI Bot Engine ---
@@ -670,9 +745,11 @@ function checkAITurn() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (!gameState.isSinglePlayer || !currentPlayer.isAI) return;
 
+    gameState.hasDrawnThisTurn = true;
+    document.getElementById('center-deck').classList.remove('can-draw');
+
     document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name} (Drawing...)`;
     
-    // AI draws a card before thinking
     if (gameState.deck.length > 0) {
         currentPlayer.hand.push(gameState.deck.pop());
         SoundManager.play('draw');
@@ -710,7 +787,7 @@ function executeAIMoves() {
                 currentPlayer.hand.splice(i, 1);
                 gameState.board[pileKey].push(card);
                 
-                SoundManager.play('validDrop'); // SOUND: AI drops a card
+                SoundManager.play('validDrop'); 
                 triggerHaptic(10);
                 renderBoard();
                 renderHand();
@@ -733,6 +810,7 @@ function executeAIMoves() {
             document.getElementById('end-turn-btn').disabled = false;
             document.getElementById('undo-btn').disabled = false;
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+            gameState.hasDrawnThisTurn = false; // Reset for human player
             saveGame();
             showHoldScreen();
         }, 500);

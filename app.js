@@ -504,14 +504,19 @@ function renderCardStack(container, cardArray, pileKey) {
         return;
     }
 
-    const maxExpansion = 110; 
+    const isMobile = window.innerWidth < 500;
+    const maxExpansion = isMobile ? 45 : 65;
+    const maxStep = isMobile ? 12 : 16;
+
     const step = cardArray.length > 1 
-        ? Math.min(15, maxExpansion / (cardArray.length - 1)) 
+        ? Math.min(maxStep, maxExpansion / (cardArray.length - 1)) 
         : 0;
 
     cardArray.forEach((card, index) => {
         const cardEl = createCardElement(card);
+
         cardEl.style.top = `${index * step}px`;
+        cardEl.style.zIndex = index + 1;
 
         makeDraggable(cardEl, { type: 'pile', pileKey: pileKey, cardIndex: index });
         

@@ -1,4 +1,4 @@
-// app.js - Complete Game Logic, PWA Flow, AI Bot, Undo, Sounds, & UI Management
+// app.js - Complete Game Logic, Dynamic Setup, Paced AI Bot, Undo, Sounds, & UI Management
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -34,11 +34,10 @@ let gameState = {
         nw: [], ne: [], se: [], sw: []
     },
     gameStarted: false,
-    isSinglePlayer: false,
     gameMode: 'casual',
     tournamentLimit: 100,
     undoEnabled: true,
-    hasDrawnThisTurn: false, // NEW: Tracks if current player has tapped the deck
+    hasDrawnThisTurn: false,
     history: []
 };
 
@@ -67,12 +66,12 @@ function initGame(playersData, existingPlayers = null) {
             icon: data.icon || '👤', 
             hand: [],
             score: 0,
-            isAI: (gameState.isSinglePlayer && idx > 0)
+            isAI: data.isAI // Populated dynamically from setup fields
         }));
     }
     
     gameState.currentPlayerIndex = 0;
-    gameState.hasDrawnThisTurn = false; // Reset draw state for turn 1
+    gameState.hasDrawnThisTurn = false;
     
     // Deal 7 cards to each player
     for (let i = 0; i < 7; i++) {
@@ -180,11 +179,12 @@ function setupGameScreen() {
         for (let i = 1; i <= count; i++) {
             const row = document.createElement('div');
             row.className = 'player-input-row';
-            row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
+            row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
             
+            // Icon Picker
             const select = document.createElement('select');
             select.className = 'input-control player-icon-select';
-            select.style.cssText = 'width: 75px; font-size: 1.3rem; text-align: center; cursor: pointer;';
+            select.style.cssText = 'width: 65px; font-size: 1.2rem; text-align: center; cursor: pointer;';
             
             PLAYER_ICONS.forEach((icon, idx) => {
                 const opt = document.createElement('option');
@@ -194,15 +194,46 @@ function setupGameScreen() {
                 select.appendChild(opt);
             });
 
+            // Name Input
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'input-control player-name-input';
             input.style.flex = '1';
             input.placeholder = `Player ${i} Name`;
-            input.value = `Player ${i}`;
+            input.value = i === 1 ? 'Player 1' : `Bot ${i - 1}`;
+            
+            // NEW: Player Type Dropdown (Human vs. Bot)
+            const typeSelect = document.createElement('select');
+            typeSelect.className = 'input-control player-type-select';
+            typeSelect.style.cssText = 'width: 100px; cursor: pointer; font-weight: bold;';
+            typeSelect.innerHTML = `
+                <option value="human">Human</option>
+                <option value="ai">Bot 🤖</option>
+            `;
+            // Default player 1 to human, subsequent slots default to Bot for quick setups
+            if (i > 1) {
+                typeSelect.value = 'ai';
+                select.value = '🤖';
+            }
+
+            // Sync icon dynamically if they choose Bot without picking an icon
+            typeSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'ai') {
+                    select.value = '🤖';
+                    if (input.value.startsWith('Player')) {
+                        input.value = `Bot ${i - 1}`;
+                    }
+                } else {
+                    select.value = PLAYER_ICONS[(i - 1) % PLAYER_ICONS.length];
+                    if (input.value.startsWith('Bot')) {
+                        input.value = `Player ${i}`;
+                    }
+                }
+            });
             
             row.appendChild(select);
             row.appendChild(input);
+            row.appendChild(typeSelect);
             container.appendChild(row);
         }
     };
@@ -220,17 +251,13 @@ function setupGameScreen() {
             const playersData = Array.from(rows).map((row, index) => {
                 const name = row.querySelector('.player-name-input').value.trim() || `Player ${index + 1}`;
                 const icon = row.querySelector('.player-icon-select').value;
-                return { name, icon };
+                const isAI = row.querySelector('.player-type-select').value === 'ai';
+                return { name, icon, isAI };
             });
         
-            gameState.isSinglePlayer = (document.getElementById('player-count').value === '1');
             gameState.gameMode = document.getElementById('game-mode').value;
             gameState.tournamentLimit = parseInt(document.getElementById('tournament-limit').value, 10); 
             gameState.undoEnabled = document.getElementById('enable-undo').checked;
-
-            if (gameState.isSinglePlayer && playersData.length === 1) {
-                playersData.push({ name: 'Robo-King', icon: '🤖' });
-            }
             
             initGame(playersData);
         
@@ -247,7 +274,6 @@ function setupGameScreen() {
 
 // --- 5. Turn Management & View Switching ---
 function setupTurnManagement() {
-    // NEW: "Ready" button simply reveals the board. Player draws by clicking the deck!
     document.getElementById('start-turn-btn').addEventListener('click', () => {
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
@@ -257,12 +283,11 @@ function setupTurnManagement() {
 
     document.getElementById('end-turn-btn').addEventListener('click', () => {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-        gameState.hasDrawnThisTurn = false; // Reset for next player
+        gameState.hasDrawnThisTurn = false; 
         saveGame();
         showHoldScreen();
     });
 
-    // NEW: Wire up the center deck click for interactive drawing
     document.getElementById('center-deck').addEventListener('click', () => {
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
         if (gameState.hasDrawnThisTurn || gameState.deck.length === 0 || currentPlayer.isAI) {
@@ -272,7 +297,6 @@ function setupTurnManagement() {
     });
 }
 
-// NEW: Sets up the visual cues (glow, disabled End Turn) before drawing
 function startPlayerTurnUI() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     const deckEl = document.getElementById('center-deck');
@@ -284,7 +308,7 @@ function startPlayerTurnUI() {
         endTurnBtn.disabled = false;
     } else if (!gameState.hasDrawnThisTurn) {
         deckEl.classList.add('can-draw');
-        endTurnBtn.disabled = true; // Gate ending turn until card is drawn
+        endTurnBtn.disabled = true; 
     } else {
         deckEl.classList.remove('can-draw');
         endTurnBtn.disabled = false;
@@ -295,7 +319,6 @@ function startPlayerTurnUI() {
     saveGame();
 }
 
-// NEW: Animates card flying from center deck to player hand
 function executeInteractiveDraw() {
     if (gameState.deck.length === 0) return;
 
@@ -309,7 +332,6 @@ function executeInteractiveDraw() {
     const drawnCard = gameState.deck.pop();
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
 
-    // --- Flying Card Animation ---
     const deckRect = deckEl.getBoundingClientRect();
     const handRect = document.getElementById('player-hand').getBoundingClientRect();
 
@@ -322,10 +344,8 @@ function executeInteractiveDraw() {
     SoundManager.play('draw');
     triggerHaptic(20);
 
-    // Force DOM reflow to trigger CSS transition cleanly
     ghost.getBoundingClientRect();
 
-    // Target the center of the hand container
     const targetX = handRect.left + (handRect.width / 2) - 35;
     const targetY = handRect.top + 10;
     ghost.style.left = `${targetX}px`;
@@ -345,25 +365,29 @@ function executeInteractiveDraw() {
 
 function showHoldScreen() {
     const nextPlayer = gameState.players[gameState.currentPlayerIndex];
+    const humanPlayers = gameState.players.filter(p => !p.isAI);
 
-    // Dynamically update button text without modifying HTML
     const readyBtn = document.getElementById('start-turn-btn');
     if (readyBtn) readyBtn.textContent = "Ready (Reveal Board)";
 
-    // --- SINGLE PLAYER MODE HANDLING ---
-    if (gameState.isSinglePlayer) {
+    // --- NEW: INTELLIGENT AI & SINGLE-HUMAN ROUTING ---
+    if (nextPlayer.isAI) {
+        // AI directly goes to execution; no intermediate block screen
         document.getElementById('hold-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
-        
-        if (nextPlayer.isAI) {
-            checkAITurn();
-        } else {
-            startPlayerTurnUI();
-        }
+        checkAITurn();
         return;
     }
 
-    // --- MULTIPLAYER MODE HANDLING (Human device passing) ---
+    if (humanPlayers.length === 1) {
+        // You're the only physical human playing against bots; clear screen pass blocks!
+        document.getElementById('hold-screen').classList.add('hidden');
+        document.getElementById('game-container').classList.remove('hidden');
+        startPlayerTurnUI();
+        return;
+    }
+
+    // --- MULTIPLAYER MODE (Triggered only when multiple local humans exist) ---
     document.getElementById('game-container').classList.add('hidden');
     document.getElementById('hold-screen').classList.remove('hidden');
     
@@ -502,7 +526,14 @@ function renderBoard() {
 function renderHand() {
     const handEl = document.getElementById('player-hand');
     handEl.innerHTML = '';
-    const currentHand = gameState.players[gameState.currentPlayerIndex].hand;
+    const currentPlayerObj = gameState.players[gameState.currentPlayerIndex];
+    const currentHand = currentPlayerObj.hand;
+
+    // Blur / Hide cards if the active player is an AI (prevents card peeking when watching bots loop)
+    if (currentPlayerObj.isAI) {
+        handEl.innerHTML = `<div style="text-align:center; padding:20px; opacity:0.5; font-style:italic;">[Thinking Hand Hidden]</div>`;
+        return;
+    }
 
     currentHand.forEach((card, index) => {
         const cardEl = createCardElement(card);
@@ -525,7 +556,6 @@ function createCardElement(card) {
 // --- 8. Drag & Drop + Move Highlighting ---
 function makeDraggable(element, dragData) {
     element.addEventListener('pointerdown', (e) => {
-        // NEW: Enforce drawing a card before interacting with the board!
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
         if (!gameState.hasDrawnThisTurn && !currentPlayer.isAI && gameState.deck.length > 0) {
             const deckEl = document.getElementById('center-deck');
@@ -570,6 +600,7 @@ function makeDraggable(element, dragData) {
     });
 }
 
+// (Remaining drag highlights and execution stay identical to preserve rule stability)
 function highlightValidMoves(cardObj, dragType) {
     for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
         const pileEl = document.getElementById(`pile-${pileKey}`);
@@ -696,11 +727,7 @@ function loadGame() {
                     if (gameState.undoEnabled) undoBtn.classList.remove('hidden');
                     else undoBtn.classList.add('hidden');
                     
-                    if (gameState.players[gameState.currentPlayerIndex].isAI) {
-                        checkAITurn();
-                    } else {
-                        startPlayerTurnUI();
-                    }
+                    showHoldScreen();
                     return true;
                 } else {
                     localStorage.removeItem('kingsCornerSave');
@@ -719,7 +746,7 @@ function saveSnapshot() {
         players: gameState.players,
         currentPlayerIndex: gameState.currentPlayerIndex,
         board: gameState.board,
-        hasDrawnThisTurn: gameState.hasDrawnThisTurn // NEW: Preserve draw state on undo
+        hasDrawnThisTurn: gameState.hasDrawnThisTurn
     }));
     gameState.history.push(snapshot);
     if (gameState.history.length > 15) gameState.history.shift(); 
@@ -737,17 +764,16 @@ function performUndo() {
     
     SoundManager.play('draw'); 
     triggerHaptic(20);
-    startPlayerTurnUI(); // NEW: Restores proper deck glow & button states after undo
+    startPlayerTurnUI(); 
 }
 
-// --- 11. Single-Player AI Bot Engine ---
+// --- 11. Single-Player & Mixed-Bot AI Engine ---
 function checkAITurn() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    if (!gameState.isSinglePlayer || !currentPlayer.isAI) return;
+    if (!currentPlayer.isAI) return;
 
     gameState.hasDrawnThisTurn = true;
     document.getElementById('center-deck').classList.remove('can-draw');
-
     document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name} (Drawing...)`;
     
     if (gameState.deck.length > 0) {
@@ -759,9 +785,10 @@ function checkAITurn() {
     document.getElementById('end-turn-btn').disabled = true;
     document.getElementById('undo-btn').disabled = true;
 
+    // SLOWED: Increased initialization delay from 800ms to 1500ms to allow text-reading
     setTimeout(() => {
         executeAIMoves();
-    }, 800);
+    }, 1500);
 }
 
 function executeAIMoves() {
@@ -777,7 +804,7 @@ function executeAIMoves() {
 
             if (pileArray.length === 0) {
                 if (isCorner && card.value === 'K') legal = true;
-                else if (!isCorner) legal = true;
+                else if (!isCorner) legal = true; // AI handles non-corner spaces legally
             } else if (isValidMove(card, pileArray)) {
                 legal = true;
             }
@@ -804,16 +831,18 @@ function executeAIMoves() {
     }
 
     if (madeMove) {
-        setTimeout(executeAIMoves, 600); 
+        // SLOWED: Increased iterative step delay from 600ms to 1600ms so humans can track placement sequences
+        setTimeout(executeAIMoves, 1600); 
     } else {
+        // SLOWED: Shifted end-turn cool-off from 500ms to 1200ms
         setTimeout(() => {
             document.getElementById('end-turn-btn').disabled = false;
             document.getElementById('undo-btn').disabled = false;
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-            gameState.hasDrawnThisTurn = false; // Reset for human player
+            gameState.hasDrawnThisTurn = false; 
             saveGame();
             showHoldScreen();
-        }, 500);
+        }, 1200);
     }
 }
 

@@ -505,8 +505,8 @@ function renderCardStack(container, cardArray, pileKey) {
     }
 
     const isMobile = window.innerWidth < 500;
-    const maxExpansion = isMobile ? 45 : 65;
-    const maxStep = isMobile ? 12 : 16;
+    const maxExpansion = isMobile ? 28 : 50;
+    const maxStep = isMobile ? 8 : 14;
 
     const step = cardArray.length > 1 
         ? Math.min(maxStep, maxExpansion / (cardArray.length - 1)) 
@@ -795,13 +795,12 @@ function checkAITurn() {
 
     gameState.hasDrawnThisTurn = true;
     document.getElementById('center-deck').classList.remove('can-draw');
-    document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name} (Drawing...)`;
+    document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name}`;
     
     if (gameState.deck.length > 0) {
         currentPlayer.hand.push(gameState.deck.pop());
     }
 
-    document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name} (Thinking...)`;
     document.getElementById('end-turn-btn').disabled = true;
     document.getElementById('undo-btn').disabled = true;
 

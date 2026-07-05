@@ -44,45 +44,84 @@ body {
 .modal-content h2 { margin-bottom: 1rem; font-size: 2rem; }
 .modal-content p { margin-bottom: 1.5rem; font-size: 1.1rem; opacity: 0.9; }
 
-.btn {
-    padding: 12px 24px;
-    font-size: 1rem;
-    border: none;
-    border-radius: 6px;
-    background: #f1f8e9;
-    color: #1b5e20;
-    font-weight: bold;
-    cursor: pointer;
-    touch-action: manipulation;
-}
-.btn.primary { background: #ffb300; color: #000; }
-
-#game-container {
+/* Constrained Viewport Container */
+#game-container, .game-viewport {
+    max-width: 600px; /* Match this roughly to your 3x3 board width */
+    margin: 0 auto;   /* Center the entire app on desktop screens */
+    padding: 10px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    padding: 10px;
-    max-width: 800px;
-    margin: 0 auto;
     width: 100%;
+    box-sizing: border-box;
 }
 
 .hidden { display: none !important; }
 
-.game-header, header, .top-nav {
+/* Responsive Header Bar */
+.game-header, header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.25); /* Subtle dark container */
+    padding: 10px 14px;
+    border-radius: 12px;
+    margin: 0 auto 15px auto;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Left zone: Player Title & Status */
+.header-left {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: rgba(0,0,0,0.25);
-    border-radius: 12px;
-    margin: 0 auto 8px auto;
-    width: 100%;
-    max-width: 500px;
-    box-sizing: border-box;
+    align-items: flex-start;
+    overflow: hidden; /* Prevents long text from blowing out width */
 }
+
+.player-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin: 0;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    color: #fff;
+}
+
+.turn-status, #bot-status {
+    font-size: 0.85rem;
+    color: #ffd700; /* Gold highlight for active turn/bot thinking */
+    min-height: 1.2em;
+    background: transparent;
+    padding: 0;
+}
+
+/* Right zone: Action Buttons */
+.header-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0; /* Prevents buttons from getting squished! */
+    align-items: center;
+}
+
+/* Button Styling */
+.btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    background: #f1f8e9;
+    color: #1b5e20;
+    touch-action: manipulation;
+}
+.btn.primary { background: #ffb300; color: #000; }
 
 .deck-status-bar {
     display: flex;
@@ -103,38 +142,6 @@ body {
     color: #ffb300;
     margin-left: 5px;
     font-size: 0.95rem;
-}
-
-.header-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #fff;
-    text-align: center;
-}
-
-.status-badge {
-    font-size: 0.85rem;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-weight: normal;
-}
-
-.header-controls {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-@media (min-width: 768px) {
-    .game-header, header, .top-nav {
-        flex-direction: row;
-        justify-content: space-between;
-    }
 }
 
 .board-grid {
@@ -276,6 +283,21 @@ body {
     }
     #player-hand {
         gap: 4px;
+    }
+}
+
+/* Extra compact rules for mobile screens */
+@media (max-width: 400px) {
+    .btn {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+    .player-title {
+        font-size: 0.95rem;
+    }
+    .game-header, header {
+        padding: 8px 10px;
+        gap: 6px;
     }
 }
 

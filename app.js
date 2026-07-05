@@ -357,7 +357,7 @@ function showHoldScreen() {
     const humanPlayers = gameState.players.filter(p => !p.isAI);
 
     const readyBtn = document.getElementById('start-turn-btn');
-    if (readyBtn) readyBtn.textContent = "Tap to start!";
+    if (readyBtn) readyBtn.textContent = "READY!";
 
     if (nextPlayer.isAI) {
         document.getElementById('hold-screen').classList.add('hidden');

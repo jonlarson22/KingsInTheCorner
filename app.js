@@ -357,7 +357,7 @@ function showHoldScreen() {
     const humanPlayers = gameState.players.filter(p => !p.isAI);
 
     const readyBtn = document.getElementById('start-turn-btn');
-    if (readyBtn) readyBtn.textContent = "Ready (Reveal Board)";
+    if (readyBtn) readyBtn.textContent = "Tap to start!";
 
     if (nextPlayer.isAI) {
         document.getElementById('hold-screen').classList.add('hidden');
@@ -387,7 +387,7 @@ function showHoldScreen() {
         <div>${nextPlayer.name}'s Turn</div>
     `;
     
-    document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayer.name}. Tap below when ready!`;
+    document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayer.name}.`;
     
     if (!previousPlayer.isAI && humanPlayers.length > 1) {
         SoundManager.play('turn');

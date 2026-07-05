@@ -1,7 +1,7 @@
 :root {
     --bg-green: #1b5e20;
-    --card-width: 70px;
-    --card-height: 100px;
+    --card-width: 60px;
+    --card-height: 84px;
 }
 
 * {
@@ -44,10 +44,71 @@ body {
 .modal-content h2 { margin-bottom: 1rem; font-size: 2rem; }
 .modal-content p { margin-bottom: 1.5rem; font-size: 1.1rem; opacity: 0.9; }
 
-/* Constrained Viewport Container */
+#setup-screen {
+    padding: 10px 15px !important;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+#name-inputs-container .player-input-row {
+    margin-bottom: 4px !important;
+    gap: 4px !important;
+}
+
+#name-inputs-container .input-control {
+    padding: 4px 6px !important;
+    font-size: 0.95rem !important;
+    height: 36px !important;
+}
+
+.form-group, #tournament-limit-group {
+    margin-bottom: 8px !important;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 2px !important;
+    font-weight: bold;
+    font-size: 0.85rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.input-control {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: none;
+    background: #f1f8e9;
+    color: #1b5e20;
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.input-control:focus {
+    outline: 3px solid #ffb300;
+}
+
+#name-inputs-container {
+    margin-bottom: 1.5rem;
+    max-height: 350px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#start-game-btn {
+    margin-top: 8px !important;
+    padding: 10px !important;
+    font-size: 1.1rem !important;
+}
+
 #game-container, .game-viewport {
-    max-width: 600px; /* Match this roughly to your 3x3 board width */
-    margin: 0 auto;   /* Center the entire app on desktop screens */
+    max-width: 600px;
+    margin: 0 auto;
     padding: 10px;
     display: flex;
     flex-direction: column;
@@ -58,13 +119,12 @@ body {
 
 .hidden { display: none !important; }
 
-/* Responsive Header Bar */
 .game-header, header {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    background-color: rgba(0, 0, 0, 0.25); /* Subtle dark container */
+    background-color: rgba(0, 0, 0, 0.25);
     padding: 10px 14px;
     border-radius: 12px;
     margin: 0 auto 15px auto;
@@ -73,13 +133,12 @@ body {
     box-sizing: border-box;
 }
 
-/* Left zone: Player Title & Status */
 .header-left {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    overflow: hidden; /* Prevents long text from blowing out width */
+    overflow: hidden;
 }
 
 .player-title {
@@ -94,21 +153,19 @@ body {
 
 .turn-status, #bot-status {
     font-size: 0.85rem;
-    color: #ffd700; /* Gold highlight for active turn/bot thinking */
+    color: #ffd700;
     min-height: 1.2em;
     background: transparent;
     padding: 0;
 }
 
-/* Right zone: Action Buttons */
 .header-actions {
     display: flex;
     gap: 8px;
-    flex-shrink: 0; /* Prevents buttons from getting squished! */
+    flex-shrink: 0;
     align-items: center;
 }
 
-/* Button Styling */
 .btn {
     padding: 8px 14px;
     font-size: 0.85rem;
@@ -187,18 +244,20 @@ body {
 }
 
 .card {
-    width: var(--card-width);
-    height: var(--card-height);
+    width: var(--card-width) !important;
+    height: var(--card-height) !important;
+    position: absolute;
     background: white;
     border-radius: 6px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.3);
+    overflow: hidden !important;
+    user-select: none;
+    box-sizing: border-box;
+    padding: 3px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 4px 6px;
     font-weight: bold;
-    font-size: 1rem;
-    position: absolute;
     cursor: grab;
     touch-action: none;
     transition: transform 0.15s ease, box-shadow 0.15s ease, left 0.2s ease, top 0.2s ease;
@@ -239,9 +298,32 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
-.card-top-left { align-self: flex-start; line-height: 1; }
-.card-center { align-self: center; font-size: 1.5rem; }
-.card-bottom-right { align-self: flex-end; line-height: 1; transform: rotate(180deg); }
+.card-top-left {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    font-size: 0.75rem;
+    line-height: 0.9;
+    text-align: center;
+}
+
+.card-bottom-right {
+    position: absolute;
+    bottom: 3px;
+    right: 4px;
+    font-size: 0.75rem;
+    line-height: 0.9;
+    text-align: center;
+    transform: rotate(180deg);
+}
+
+.card-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.4rem;
+}
 
 .pile .card { 
     position: absolute; 
@@ -258,36 +340,40 @@ body {
     width: 100%;
 }
 
-.hand, #player-hand {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+#player-hand {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 8px !important;
+    padding: 10px 5px !important;
+    min-height: 95px;
     align-items: center;
-    gap: 8px;
-    margin: 0 auto;
-    padding: 0 10px;
+    -webkit-overflow-scrolling: touch;
     max-width: 100%;
     box-sizing: border-box;
 }
 
-.hand .card, #player-hand .card {
-    position: relative;
-    flex-shrink: 0;
+#player-hand .card {
+    position: relative !important;
+    flex: 0 0 auto !important;
+    top: auto !important;
+    left: auto !important;
 }
 
-@media (max-width: 600px) {
-    #player-hand .card {
-        width: clamp(45px, 12vw, 60px);
-        height: clamp(63px, 16.8vw, 84px);
-        font-size: clamp(0.7rem, 2.5vw, 0.9rem);
-    }
-    #player-hand {
-        gap: 4px;
-    }
-}
-
-/* Extra compact rules for mobile screens */
 @media (max-width: 400px) {
+    .card {
+        width: 52px !important;
+        height: 74px !important;
+    }
+    .card-top-left, .card-bottom-right {
+        font-size: 0.65rem !important;
+        line-height: 0.8 !important;
+    }
+    .card-center {
+        font-size: 1.1rem !important;
+    }
     .btn {
         padding: 6px 10px;
         font-size: 0.75rem;
@@ -307,45 +393,6 @@ body {
     pointer-events: none;
     transform: translate(-50%, -50%) scale(1.08) rotate(3deg);
     box-shadow: 0 14px 28px rgba(0,0,0,0.45), 0 10px 10px rgba(0,0,0,0.38);
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-    text-align: left;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: bold;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.input-control {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 6px;
-    border: none;
-    background: #f1f8e9;
-    color: #1b5e20;
-    font-size: 1rem;
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.input-control:focus {
-    outline: 3px solid #ffb300;
-}
-
-#name-inputs-container {
-    margin-bottom: 1.5rem;
-    max-height: 350px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
 }
 
 .win-content {

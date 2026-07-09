@@ -1,6 +1,6 @@
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const PLAYER_ICONS = ['😀', '😇', '🥰', '🤪', '🤩', '😎', '🤯', '🤖', '🧜‍♀️', '🧙‍♂️', '🎅', '🥷', '🧑‍🚀', '🤴', '👸', '🧌', '🤠', '🤡', '👻', '💀', '👽', '🎃', '🧠', '🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐵', '🐧', '🦦', '🦥', '🦩', '🐊', '🦈', '🐬', '🐟', '🦀', '🐙', '🐢', '🐍', '🦖', '🦕', '🐝', '🦋', '🕷️', '🦚', '🦜', '🐉', '🩰', '🌹', '🍀', '🌴', '🌵', '🎄', '🌎', '☀️', '⭐', '🌪️', '🔥', '⚡️', '🏴‍☠️', '🎲', '🔮', '💎', '💰', '💣', '🧬', '☢️', '☣️', '🔱', '⚜️', '🩷', '❤️', '💜', '⛄', '🧸', '🎠', '✈️', '🚀', '⛵', '⛺', '🩰', '🤿', '🏒', '⛷️', '🏀', '⚽', '🏐', '🎾', '🍎', '🍊', '🍉', '🍓', '🍍', '🧀', '🥨', '🥞', '🍔', '🌭', '🍕', '🍿', '🍭', '🍦', '🍩'];
+const PLAYER_ICONS = ['😀', '😇', '🥰', '🤪', '🤩', '😎', '🤯', '🤖', '🐧', '🦦', '🦥', '🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐵', '🦩', '🐊', '🦈', '🐬', '🐟', '🦀', '🐙', '🐢', '🐍', '🦖', '🦕', '🐝', '🦋', '🕷️', '🦚', '🦜', '🐉', '🩰', '🧜‍♀️', '🧙‍♂️', '🎅', '🥷', '🧑‍🚀', '🤴', '👸', '🧌', '🤠', '🤡', '👻', '💀', '👽', '🎃', '🧠', '🌹', '🍀', '🌴', '🌵', '🎄', '🌎', '☀️', '⭐', '🌪️', '🔥', '⚡️', '🏴‍☠️', '🎲', '🔮', '💎', '💰', '💣', '🧬', '☢️', '☣️', '🔱', '⚜️', '🩷', '❤️', '💜', '⛄', '🧸', '🎠', '✈️', '🚀', '⛵', '⛺', '🩰', '🤿', '🏒', '⛷️', '🏀', '⚽', '🏐', '🎾', '🍎', '🍊', '🍉', '🍓', '🍍', '🧀', '🥨', '🥞', '🍔', '🌭', '🍕', '🍿', '🍭', '🍦', '🍩'];
 
 const SoundManager = {
     enabled: true,
@@ -585,13 +585,17 @@ function makeDraggable(element, dragData) {
         }
 
         e.preventDefault();
-        
+
         let cardObj;
+        let visualCard;
+
         if (dragData.type === 'hand') {
             cardObj = gameState.players[gameState.currentPlayerIndex].hand[dragData.cardIndex];
+            visualCard = cardObj;
         } else if (dragData.type === 'pile') {
             const pile = gameState.board[dragData.pileKey];
             cardObj = pile[0]; 
+            visualCard = pile[dragData.cardIndex]; 
         }
 
         activeDrag = {
@@ -603,11 +607,9 @@ function makeDraggable(element, dragData) {
         };
 
         const ghost = document.getElementById('drag-ghost');
-        ghost.className = `card ${cardObj.color}`;
+
+        ghost.className = `card ${visualCard.color}`;
         ghost.innerHTML = element.innerHTML;
-        ghost.style.left = `${e.clientX}px`;
-        ghost.style.top = `${e.clientY}px`;
-        ghost.classList.remove('hidden');
 
         element.style.opacity = '0.3';
         

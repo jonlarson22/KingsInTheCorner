@@ -504,6 +504,7 @@ body {
     box-shadow: 0 14px 28px rgba(0,0,0,0.45), 0 10px 10px rgba(0,0,0,0.38);
     z-index: 1000;
     cursor: grabbing;
+    transition: none !important;
 }
 
 @keyframes cardSnap {

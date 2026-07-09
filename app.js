@@ -608,7 +608,10 @@ function makeDraggable(element, dragData) {
 
         const ghost = document.getElementById('drag-ghost');
 
-        ghost.className = `card ${visualCard.color}`;
+        ghost.style.left = `${e.clientX}px`;
+        ghost.style.top = `${e.clientY}px`;
+
+        ghost.className = `card ${visualCard.color} dragging`;
         ghost.innerHTML = element.innerHTML;
 
         element.style.opacity = '0.3';

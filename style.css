@@ -380,32 +380,34 @@ body {
 
 .pile .card { 
     position: absolute; 
-    top: 0; 
+    top: calc(50% - (var(--card-height) / 2)); 
     left: calc(50% - (var(--card-width) / 2)); 
 }
 
 .hand-container {
-    min-height: 130px;
+    min-height: 120px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 15px 0;
+    padding: 10px 0;
     width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
 }
 
 #player-hand {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
+    flex-wrap: wrap !important;
+    justify-content: center;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    max-height: 220px;
     gap: 8px !important;
-    padding: 10px 5px !important;
-    min-height: 95px;
-    align-items: center;
-    -webkit-overflow-scrolling: touch;
-    max-width: 100%;
+    padding: 8px 5px !important;
+    width: 100%;
     box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
 }
 
 #player-hand .card {
@@ -515,24 +517,25 @@ body {
 }
 
 body[data-theme="green-felt"] {
-    --table-bg: #076324;
-    --table-pattern: radial-gradient(#0a7e2e 15%, transparent 16%);
+    --table-bg: #0b5e25;
+    --table-pattern: radial-gradient(circle at center, #0e7a31 0%, #064319 100%);
 }
 
 body[data-theme="dark-wood"] {
     --table-bg: #2b1810;
-    --table-pattern: linear-gradient(0deg, rgba(0,0,0,0.2) 50%, transparent 50%);
+    --table-pattern: radial-gradient(circle at center, #3d2317 0%, #1a0e09 100%);
 }
 
 body[data-theme="midnight-slate"] {
     --table-bg: #1a1a2e;
-    --table-pattern: none;
+    --table-pattern: radial-gradient(circle at center, #252540 0%, #10101d 100%);
 }
 
 .board-grid {
     background-color: var(--table-bg);
     background-image: var(--table-pattern);
-    background-size: 30px 30px;
+    background-size: 100% 100%;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4), 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .center-deck.can-draw {

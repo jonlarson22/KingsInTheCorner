@@ -913,3 +913,13 @@ function calculateHandScore(hand) {
         return total + parseInt(card.value, 10);
     }, 0);
 }
+
+function startBotTurn() {
+  isPlayerTurn = false;
+  document.getElementById('game-board').classList.add('board-locked');
+  }
+
+function endBotTurn() {
+  isPlayerTurn = true;
+  document.getElementById('game-board').classList.remove('board-locked');
+}

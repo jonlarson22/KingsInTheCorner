@@ -507,16 +507,23 @@ function renderCardStack(container, cardArray, pileKey) {
         return;
     }
 
+    const baseDrop = 26; 
+    const stackStep = 2;
+
+    let maxOffset = 0;
+    if (cardArray.length > 1) {
+        maxOffset = baseDrop + ((cardArray.length - 2) * stackStep);
+    }
+
     cardArray.forEach((card, index) => {
         const cardEl = createCardElement(card);
 
         let verticalOffset = 0;
-        
         if (index > 0) {
-            verticalOffset = 28 + ((index - 1) * 2);
+            verticalOffset = baseDrop + ((index - 1) * stackStep);
         }
 
-        cardEl.style.top = `calc(50% - (var(--card-height) / 2) + ${verticalOffset}px)`;
+        cardEl.style.top = `calc(50% - (var(--card-height) / 2) - (${maxOffset}px / 2) + ${verticalOffset}px)`;
         cardEl.style.zIndex = index + 1;
 
         makeDraggable(cardEl, { type: 'pile', pileKey: pileKey, cardIndex: index });

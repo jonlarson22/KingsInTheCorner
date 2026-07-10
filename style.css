@@ -579,3 +579,8 @@ body[data-theme="midnight-slate"] {
     opacity: 0.7;
     cursor: wait;
 }
+
+canvas {
+    z-index: 9999 !important;
+    pointer-events: none !important;
+}

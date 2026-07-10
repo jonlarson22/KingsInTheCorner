@@ -614,7 +614,6 @@ function renderHand() {
 
     currentHand.forEach((card, index) => {
         const cardEl = createCardElement(card);
-        // Because we sorted the array above, this index is totally safe to use
         makeDraggable(cardEl, { type: 'hand', cardIndex: index });
         handEl.appendChild(cardEl);
     });

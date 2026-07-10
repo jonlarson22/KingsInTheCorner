@@ -418,9 +418,9 @@ body {
 }
 
 @media (max-width: 400px) {
-    .card {
-        width: 52px !important;
-        height: 74px !important;
+   :root {
+        --card-width: 52px;
+        --card-height: 74px;
     }
     .card-top-left, .card-bottom-right {
         font-size: 0.65rem !important;

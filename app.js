@@ -593,8 +593,28 @@ function renderHand() {
         return;
     }
 
+    const valueWeights = {
+        'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, 
+        '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13
+    };
+
+    currentHand.sort((a, b) => {
+        const valA = valueWeights[a.value];
+        const valB = valueWeights[b.value];
+
+        if (valA !== valB) {
+            return valA - valB; 
+        }
+
+        const colorWeightA = a.color === 'red' ? 1 : 2;
+        const colorWeightB = b.color === 'red' ? 1 : 2;
+        
+        return colorWeightA - colorWeightB;
+    });
+
     currentHand.forEach((card, index) => {
         const cardEl = createCardElement(card);
+        // Because we sorted the array above, this index is totally safe to use
         makeDraggable(cardEl, { type: 'hand', cardIndex: index });
         handEl.appendChild(cardEl);
     });

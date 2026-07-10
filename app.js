@@ -38,6 +38,7 @@ let gameState = {
 };
 
 let activeDrag = null;
+let isBotTurn = false;
 
 function triggerHaptic(ms = 15) {
     if ('vibrate' in navigator) {
@@ -273,6 +274,8 @@ function setupTurnManagement() {
     });
 
     document.getElementById('center-deck').addEventListener('click', () => {
+        if (isBotTurn) return;
+        
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
         if (gameState.hasDrawnThisTurn || gameState.deck.length === 0 || currentPlayer.isAI) {
             return;
@@ -280,7 +283,6 @@ function setupTurnManagement() {
         executeInteractiveDraw();
     });
 }
-
 function startPlayerTurnUI() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     const deckEl = document.getElementById('center-deck');
@@ -574,6 +576,8 @@ function createCardElement(card) {
 
 function makeDraggable(element, dragData) {
     element.addEventListener('pointerdown', (e) => {
+        if (isBotTurn) return;
+
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
         if (!gameState.hasDrawnThisTurn && !currentPlayer.isAI && gameState.deck.length > 0) {
             const deckEl = document.getElementById('center-deck');
@@ -610,7 +614,6 @@ function makeDraggable(element, dragData) {
 
         ghost.style.left = `${e.clientX}px`;
         ghost.style.top = `${e.clientY}px`;
-
         ghost.className = `card ${visualCard.color} dragging`;
         ghost.innerHTML = element.innerHTML;
 
@@ -798,6 +801,9 @@ function checkAITurn() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (!currentPlayer.isAI) return;
 
+    isBotTurn = true;
+    document.getElementById('game-container').classList.add('board-locked');
+
     gameState.hasDrawnThisTurn = true;
     document.getElementById('center-deck').classList.remove('can-draw');
     document.getElementById('current-player-display').textContent = `${currentPlayer.icon || '🤖'} ${currentPlayer.name}`;
@@ -883,6 +889,9 @@ function executeAIMoves() {
     }
 
     if (currentPlayer.hand.length === 0) {
+        isBotTurn = false;
+        document.getElementById('game-container').classList.remove('board-locked');
+        
         showWinScreen(currentPlayer.name);
         return;
     }
@@ -891,6 +900,9 @@ function executeAIMoves() {
         setTimeout(executeAIMoves, 1600); 
     } else {
         setTimeout(() => {
+            isBotTurn = false;
+            document.getElementById('game-container').classList.remove('board-locked');
+
             document.getElementById('end-turn-btn').disabled = false;
             document.getElementById('undo-btn').disabled = false;
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;

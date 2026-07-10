@@ -4,20 +4,47 @@ const PLAYER_ICONS = ['😀', '😇', '🥰', '🤪', '🤩', '😎', '🤯', '�
 
 const SoundManager = {
     enabled: true,
-    sounds: {
-        draw: new Audio('./sounds/draw.mp3'),
-        validDrop: new Audio('./sounds/drop-valid.mp3'),
-        invalidDrop: new Audio('./sounds/drop-invalid.mp3'),
-        turn: new Audio('./sounds/turn-notify.mp3'),
-        roundWin: new Audio('./sounds/win-round.mp3'),
-        tournamentWin: new Audio('./sounds/win-tournament.mp3')
+    context: null,
+    buffers: {},
+    soundUrls: {
+        draw: './sounds/draw.mp3',
+        validDrop: './sounds/drop-valid.mp3',
+        invalidDrop: './sounds/drop-invalid.mp3',
+        turn: './sounds/turn-notify.mp3',
+        roundWin: './sounds/win-round.mp3',
+        tournamentWin: './sounds/win-tournament.mp3'
     },
+
+    init() {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.context = new AudioContext();
+
+        for (const [name, url] of Object.entries(this.soundUrls)) {
+            fetch(url)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => this.context.decodeAudioData(arrayBuffer))
+                .then(audioBuffer => {
+                    this.buffers[name] = audioBuffer;
+                })
+                .catch(e => console.warn(`Error loading sound ${name}:`, e));
+        }
+    },
+
     play(effectName) {
-        if (!this.enabled || !this.sounds[effectName]) return;
+        if (!this.enabled || !this.context || !this.buffers[effectName]) return;
+
         try {
-            this.sounds[effectName].currentTime = 0;
-            this.sounds[effectName].play().catch(() => {});
-        } catch (e) { console.warn("Audio engine error:", e); }
+            if (this.context.state === 'suspended') {
+                this.context.resume();
+            }
+
+            const source = this.context.createBufferSource();
+            source.buffer = this.buffers[effectName];
+            source.connect(this.context.destination);
+            source.start(0);
+        } catch (e) { 
+            console.warn("Audio engine error:", e); 
+        }
     }
 };
 
@@ -116,6 +143,7 @@ function isValidMove(card, targetPile) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+    SoundManager.init();
     setupGameScreen();
     setupTurnManagement();
     setupWinControls();

@@ -498,6 +498,7 @@ function showWinScreen(winnerName) {
  * @param {Array} cardArray - Array of card objects in this pile.
  * @param {String} pileKey - The dictionary key for the pile (e.g., 'north', 'nw').
  */
+
 function renderCardStack(container, cardArray, pileKey) {
     const label = container.querySelector('.pile-label');
     container.innerHTML = '';
@@ -506,18 +507,16 @@ function renderCardStack(container, cardArray, pileKey) {
         return;
     }
 
-    const isMobile = window.innerWidth < 500;
-    const maxExpansion = isMobile ? 28 : 50;
-    const maxStep = isMobile ? 8 : 14;
-
-    const step = cardArray.length > 1 
-        ? Math.min(maxStep, maxExpansion / (cardArray.length - 1)) 
-        : 0;
-
     cardArray.forEach((card, index) => {
         const cardEl = createCardElement(card);
 
-        cardEl.style.top = `${index * step}px`;
+        let verticalOffset = 0;
+        
+        if (index > 0) {
+            verticalOffset = 28 + ((index - 1) * 2);
+        }
+
+        cardEl.style.top = `calc(50% - (var(--card-height) / 2) + ${verticalOffset}px)`;
         cardEl.style.zIndex = index + 1;
 
         makeDraggable(cardEl, { type: 'pile', pileKey: pileKey, cardIndex: index });

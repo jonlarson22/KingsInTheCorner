@@ -1,6 +1,6 @@
 {
   "name": "Kings In The Corner",
-  "short_name": "KingsCorner",
+  "short_name": "Kings In The Corner",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1b5e20",

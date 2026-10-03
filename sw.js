@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kings-corner-v3.5'; 
+const CACHE_NAME = 'kings-corner-v3.6'; 
 
 const ASSETS = [
     './',
@@ -25,10 +25,13 @@ self.addEventListener('install', (e) => {
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('Caching all app assets...');
+                // Bypass the HTTP cache so a stale browser-cached copy can
+                // never poison the versioned app cache during install.
                 // Cache each asset independently so one failure (e.g. the
                 // cross-origin CDN) doesn't fail the whole install.
                 return Promise.all(ASSETS.map(url =>
-                    cache.add(url).catch(err => console.warn('Failed to cache:', url, err))
+                    cache.add(new Request(url, { cache: 'reload' }))
+                        .catch(err => console.warn('Failed to cache:', url, err))
                 ));
             })
             .then(() => self.skipWaiting())

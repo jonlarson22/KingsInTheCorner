@@ -542,6 +542,38 @@ body[data-theme="midnight-slate"] {
     --card-accent: #0f766e;
 }
 
+body[data-theme="crimson-royale"] {
+    --table-bg: #5f0f0f;
+    --table-pattern: radial-gradient(circle at center, #8a1a1a 0%, #3d0808 100%);
+    --card-stripe-1: #b45309;
+    --card-stripe-2: #f59e0b;
+    --card-accent: #b45309;
+}
+
+body[data-theme="desert-mirage"] {
+    --table-bg: #8a6a3f;
+    --table-pattern: radial-gradient(circle at center, #a5824f 0%, #5c4226 100%);
+    --card-stripe-1: #713f12;
+    --card-stripe-2: #b45309;
+    --card-accent: #713f12;
+}
+
+body[data-theme="ember-night"] {
+    --table-bg: #171412;
+    --table-pattern: radial-gradient(circle at center, #2b2119 0%, #0b0908 100%);
+    --card-stripe-1: #9a3412;
+    --card-stripe-2: #f97316;
+    --card-accent: #9a3412;
+}
+
+body[data-theme="royal-velvet"] {
+    --table-bg: #2a0f33;
+    --table-pattern: radial-gradient(circle at center, #3d1550 0%, #170a1e 100%);
+    --card-stripe-1: #52525b;
+    --card-stripe-2: #a1a1aa;
+    --card-accent: #52525b;
+}
+
 .board-grid {
     background-color: var(--table-bg);
     background-image: var(--table-pattern);

@@ -534,6 +534,14 @@ body[data-theme="brushed-steel"] {
     --card-accent: #4c1d95;
 }
 
+body[data-theme="midnight-slate"] {
+    --table-bg: #1a1a2e;
+    --table-pattern: radial-gradient(circle at center, #252540 0%, #10101d 100%);
+    --card-stripe-1: #0f766e;
+    --card-stripe-2: #14b8a6;
+    --card-accent: #0f766e;
+}
+
 .board-grid {
     background-color: var(--table-bg);
     background-image: var(--table-pattern);

@@ -1,6 +1,6 @@
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const PLAYER_ICONS = ['😀', '😇', '🥰', '🤪', '🤩', '😎', '🤯', '🤖', '🐧', '🦦', '🦥', '🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐵', '🦩', '🐊', '🦈', '🐬', '🐟', '🦀', '🐙', '🐢', '🐍', '🦖', '🦕', '🐝', '🦋', '🕷️', '🦚', '🦜', '🐉', '🩰', '🧜‍♀️', '🧙‍♂️', '🎅', '🥷', '🧑‍🚀', '🤴', '👸', '🧌', '🤠', '🤡', '👻', '💀', '👽', '🎃', '🧠', '🌹', '🍀', '🌴', '🌵', '🎄', '🌎', '☀️', '⭐', '🌪️', '🔥', '⚡️', '🏴‍☠️', '🎲', '🔮', '💎', '💰', '💣', '🧬', '☢️', '☣️', '🔱', '⚜️', '🩷', '❤️', '💜', '⛄', '🧸', '🎠', '✈️', '🚀', '⛵', '⛺', '🩰', '🤿', '🏒', '⛷️', '🏀', '⚽', '🏐', '🎾', '🍎', '🍊', '🍉', '🍓', '🍍', '🧀', '🥨', '🥞', '🍔', '🌭', '🍕', '🍿', '🍭', '🍦', '🍩'];
+const PLAYER_ICONS = ['😀', '😇', '🥰', '🤪', '🤩', '😎', '🤯', '🤖', '🐧', '🦦', '🦥', '🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐵', '🦩', '🐊', '🦈', '🐬', '🐟', '🦀', '🐙', '🐢', '🐍', '🦖', '🦕', '🐝', '🦋', '🕷️', '🦚', '🦜', '🐉', '🩰', '🧜‍♀️', '🧙‍♂️', '🎅', '🥷', '🧑‍🚀', '🤴', '👸', '🧌', '🤠', '🤡', '👻', '💀', '👽', '🎃', '🧠', '🌹', '🍀', '🌴', '🌵', '🎄', '🌎', '☀️', '⭐', '🌪️', '🔥', '⚡️', '🏴‍☠️', '🎲', '🔮', '💎', '💰', '💣', '🧬', '☢️', '☣️', '🔱', '⚜️', '🩷', '❤️', '💜', '⛄', '🧸', '🎠', '✈️', '🚀', '⛵', '⛺', '🤿', '🏒', '⛷️', '🏀', '⚽', '🏐', '🎾', '🍎', '🍊', '🍉', '🍓', '🍍', '🧀', '🥨', '🥞', '🍔', '🌭', '🍕', '🍿', '🍭', '🍦', '🍩'];
 
 const SoundManager = {
     enabled: true,
@@ -16,8 +16,14 @@ const SoundManager = {
     },
 
     init() {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        this.context = new AudioContext();
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.context = new AudioContext();
+        } catch (e) {
+            console.warn('WebAudio not supported, sounds disabled:', e);
+            this.context = null;
+            return;
+        }
 
         for (const [name, url] of Object.entries(this.soundUrls)) {
             fetch(url)
@@ -73,6 +79,12 @@ function triggerHaptic(ms = 15) {
     }
 }
 
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
 function initGame(playersData, existingPlayers = null) {
     gameState.deck = createDeck();
     shuffle(gameState.deck);
@@ -94,6 +106,7 @@ function initGame(playersData, existingPlayers = null) {
     
     gameState.currentPlayerIndex = 0;
     gameState.hasDrawnThisTurn = false;
+    gameState.history = [];
     
     for (let i = 0; i < 7; i++) {
         gameState.players.forEach(player => {
@@ -132,9 +145,10 @@ function shuffle(deck) {
     }
 }
 
-function isValidMove(card, targetPile) {
+function isValidMove(card, targetPile, isCorner = false) {
     if (targetPile.length === 0) {
-        return card.value === 'K'; 
+        // Empty corner piles only accept Kings; empty side piles accept any card.
+        return isCorner ? card.value === 'K' : true;
     }
     const topCard = targetPile[targetPile.length - 1];
     const isOppositeColor = card.color !== topCard.color;
@@ -297,6 +311,7 @@ function setupTurnManagement() {
     document.getElementById('end-turn-btn').addEventListener('click', () => {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
         gameState.hasDrawnThisTurn = false; 
+        gameState.history = [];
         saveGame();
         showHoldScreen();
     });
@@ -367,6 +382,8 @@ function executeInteractiveDraw() {
     ghost.style.transform = 'scale(1.05) rotate(360deg)';
 
     setTimeout(() => {
+        // The player may have ended the turn or quit during the animation.
+        if (!gameState.gameStarted) return;
         if (ghost && ghost.parentNode) {
             ghost.parentNode.removeChild(ghost);
         }
@@ -413,8 +430,8 @@ function showHoldScreen() {
     
     const noticeEl = document.getElementById('next-player-notice');
     noticeEl.innerHTML = `
-        <div style="font-size: 4rem; margin-bottom: 10px; line-height: 1;">${nextPlayer.icon}</div>
-        <div>${nextPlayer.name}'s Turn</div>
+        <div style="font-size: 4rem; margin-bottom: 10px; line-height: 1;">${escapeHtml(nextPlayer.icon)}</div>
+        <div>${escapeHtml(nextPlayer.name)}'s Turn</div>
     `;
     
     document.getElementById('pass-device-notice').textContent = `Hand the device to ${nextPlayer.name}.`;
@@ -446,14 +463,14 @@ function setupWinControls() {
     });
 }
 
-function showWinScreen(winnerName) {
+function showWinScreen(winner) {
     document.getElementById('game-container').classList.add('hidden');
-    
+
     const winnerDisplay = document.getElementById('winner-display');
-    const winningPlayerObj = gameState.players.find(p => p.name === winnerName);
-    const winnerIcon = winningPlayerObj ? winningPlayerObj.icon : '👑';
-    
-    winnerDisplay.innerHTML = `<span style="font-size: 2.5rem;">${winnerIcon}</span><br>${winnerName} Wins the Hand!`;
+    const winnerIcon = (winner && winner.icon) || '👑';
+    const winnerName = (winner && winner.name) || 'Someone';
+
+    winnerDisplay.innerHTML = `<span style="font-size: 2.5rem;">${escapeHtml(winnerIcon)}</span><br>${escapeHtml(winnerName)} Wins the Hand!`;
     
     const scoreContainer = document.getElementById('round-scores');
     let html = `
@@ -474,7 +491,7 @@ function showWinScreen(winnerName) {
         const isWinner = player.hand.length === 0;
         html += `
             <tr>
-                <td><span style="font-size: 1.2rem; margin-right: 6px;">${player.icon}</span><strong>${player.name}</strong> ${isWinner ? '👑' : ''}</td>
+                <td><span style="font-size: 1.2rem; margin-right: 6px;">${escapeHtml(player.icon)}</span><strong>${escapeHtml(player.name)}</strong> ${isWinner ? '👑' : ''}</td>
                 <td>${isWinner ? '--' : '+' + handPenalty}</td>
                 <td><strong>${player.score} pts</strong></td>
             </tr>`;
@@ -528,10 +545,16 @@ function showWinScreen(winnerName) {
  */
 
 function renderCardStack(container, cardArray, pileKey) {
-    const label = container.querySelector('.pile-label');
     container.innerHTML = '';
-    if (label && cardArray.length === 0) {
-        container.appendChild(label);
+    if (cardArray.length === 0) {
+        // Empty corner piles show a "K" hint; rebuild it every render since
+        // innerHTML='' above discards the previous one.
+        if (['nw', 'ne', 'se', 'sw'].includes(pileKey)) {
+            const label = document.createElement('span');
+            label.className = 'pile-label';
+            label.textContent = 'K';
+            container.appendChild(label);
+        }
         return;
     }
 
@@ -675,27 +698,23 @@ function makeDraggable(element, dragData) {
 
         element.style.opacity = '0.3';
         
-        highlightValidMoves(cardObj, dragData.type);
+        highlightValidMoves(cardObj, dragData);
 
         document.addEventListener('pointermove', onPointerMove);
         document.addEventListener('pointerup', onPointerUp);
+        document.addEventListener('pointercancel', onPointerCancel);
     });
 }
 
-function highlightValidMoves(cardObj, dragType) {
+function highlightValidMoves(cardObj, dragData) {
     for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
         const pileEl = document.getElementById(`pile-${pileKey}`);
         const isCorner = ['nw', 'ne', 'se', 'sw'].includes(pileKey);
-        
-        let isValid = false;
-        if (pileArray.length === 0) {
-            if (isCorner && cardObj.value === 'K') isValid = true;
-            else if (!isCorner && dragType === 'hand') isValid = true;
-        } else if (isValidMove(cardObj, pileArray)) {
-            isValid = true;
-        }
 
-        if (isValid) pileEl.classList.add('valid-target');
+        // Don't highlight the pile being dragged from.
+        if (dragData.type === 'pile' && dragData.pileKey === pileKey) continue;
+
+        if (isValidMove(cardObj, pileArray, isCorner)) pileEl.classList.add('valid-target');
     }
 }
 
@@ -719,6 +738,7 @@ function onPointerUp(e) {
 
     document.removeEventListener('pointermove', onPointerMove);
     document.removeEventListener('pointerup', onPointerUp);
+    document.removeEventListener('pointercancel', onPointerCancel);
     document.getElementById('drag-ghost').classList.add('hidden');
     activeDrag.element.style.opacity = '1';
 
@@ -727,30 +747,38 @@ function onPointerUp(e) {
     let moveSuccessful = false;
 
     if (pileEl && pileEl.dataset.pile) {
-    const targetPileKey = pileEl.dataset.pile;
-    if (activeDrag.data.type === 'pile' && activeDrag.data.pileKey === targetPileKey) {
-        return;
-    }
-    const targetPile = gameState.board[targetPileKey];
-    const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetPileKey);
+        const targetPileKey = pileEl.dataset.pile;
+        if (activeDrag.data.type === 'pile' && activeDrag.data.pileKey === targetPileKey) {
+            activeDrag = null;
+            return;
+        }
+        const targetPile = gameState.board[targetPileKey];
+        const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetPileKey);
 
-    if (targetPile.length === 0 && isCorner && activeDrag.card.value !== 'K') {
-        console.log("Only Kings can be placed in empty corner piles!");
-    } 
-    else if (targetPile.length === 0 && !isCorner) {
-        executeMove(targetPileKey);
-        moveSuccessful = true;
+        if (isValidMove(activeDrag.card, targetPile, isCorner)) {
+            executeMove(targetPileKey);
+            moveSuccessful = true;
+        }
     }
-    else if (isValidMove(activeDrag.card, targetPile)) {
-        executeMove(targetPileKey);
-        moveSuccessful = true;
-    }
-}
 
     if (!moveSuccessful && pileEl) {
         SoundManager.play('invalidDrop');
         triggerHaptic([30, 30, 30]); 
     }
+
+    activeDrag = null;
+}
+
+function onPointerCancel() {
+    if (!activeDrag) return;
+
+    clearHighlights();
+
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+    document.removeEventListener('pointercancel', onPointerCancel);
+    document.getElementById('drag-ghost').classList.add('hidden');
+    activeDrag.element.style.opacity = '1';
 
     activeDrag = null;
 }
@@ -778,7 +806,7 @@ function executeMove(targetPileKey) {
 
     if (gameState.players[gameState.currentPlayerIndex].hand.length === 0) {
         const winningPlayer = gameState.players[gameState.currentPlayerIndex];
-        showWinScreen(winningPlayer.name);
+        showWinScreen(winningPlayer);
         return;
     }
 
@@ -823,6 +851,9 @@ function loadGame() {
 
 function saveSnapshot() {
     if (!gameState.undoEnabled) return;
+    // Undo only covers the current human turn: never snapshot bot moves.
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (currentPlayer && currentPlayer.isAI) return;
     const snapshot = JSON.parse(JSON.stringify({
         deck: gameState.deck,
         players: gameState.players,
@@ -888,16 +919,7 @@ function executeAIMoves() {
             if (sourceKey === targetKey) continue;
             const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetKey);
 
-            let canMovePile = false;
-            if (targetPile.length === 0) {
-                if (isCorner && bottomCard.value === 'K' && !['nw', 'ne', 'se', 'sw'].includes(sourceKey)) {
-                    canMovePile = true;
-                }
-            } else if (isValidMove(bottomCard, targetPile)) {
-                canMovePile = true;
-            }
-
-            if (canMovePile) {
+            if (isValidMove(bottomCard, targetPile, isCorner)) {
                 saveSnapshot();
                 const cardsToMove = gameState.board[sourceKey].splice(0);
                 gameState.board[targetKey].push(...cardsToMove);
@@ -918,16 +940,8 @@ function executeAIMoves() {
             
             for (const [pileKey, pileArray] of Object.entries(gameState.board)) {
                 const isCorner = ['nw', 'ne', 'se', 'sw'].includes(pileKey);
-                let legal = false;
 
-                if (pileArray.length === 0) {
-                    if (isCorner && card.value === 'K') legal = true;
-                    else if (!isCorner) legal = true; 
-                } else if (isValidMove(card, pileArray)) {
-                    legal = true;
-                }
-
-                if (legal) {
+                if (isValidMove(card, pileArray, isCorner)) {
                     saveSnapshot();
                     currentPlayer.hand.splice(i, 1);
                     gameState.board[pileKey].push(card);
@@ -948,7 +962,7 @@ function executeAIMoves() {
         isBotTurn = false;
         document.getElementById('game-container').classList.remove('board-locked');
         
-        showWinScreen(currentPlayer.name);
+        showWinScreen(currentPlayer);
         return;
     }
 
@@ -963,6 +977,7 @@ function executeAIMoves() {
             document.getElementById('undo-btn').disabled = false;
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
             gameState.hasDrawnThisTurn = false; 
+            gameState.history = [];
             saveGame();
             showHoldScreen();
         }, 1200);

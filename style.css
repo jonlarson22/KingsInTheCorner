@@ -2,6 +2,17 @@
     --bg-green: #1b5e20;
     --card-width: 60px;
     --card-height: 84px;
+    /* Themeable chrome: defaults suit the dark themes; light themes override. */
+    --page-bg: #1b5e20;
+    --ink: #ffffff;
+    --pile-bg: rgba(255, 255, 255, 0.1);
+    --pile-border: rgba(255, 255, 255, 0.3);
+    --pile-corner-bg: rgba(0, 0, 0, 0.15);
+    --deck-bg: rgba(0, 0, 0, 0.15);
+    --deck-border: rgba(255, 255, 255, 0.2);
+    --bar-bg: rgba(0, 0, 0, 0.25);
+    --bar-border: rgba(255, 255, 255, 0.1);
+    --deck-count-color: #ffb300;
 }
 
 * {
@@ -14,8 +25,8 @@
 }
 
 body {
-    background-color: var(--bg-green);
-    color: white;
+    background-color: var(--page-bg);
+    color: var(--ink);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -34,6 +45,7 @@ body {
 
 .modal-content {
     background: #2e7d32;
+    color: #ffffff;
     padding: 2rem;
     border-radius: 12px;
     text-align: center;
@@ -177,7 +189,7 @@ body {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    background-color: rgba(0, 0, 0, 0.25);
+    background-color: var(--bar-bg);
     padding: 10px 14px;
     border-radius: 12px;
     margin: 0 auto 15px auto;
@@ -201,7 +213,7 @@ body {
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
-    color: #fff;
+    color: var(--ink);
 }
 
 .header-actions {
@@ -229,19 +241,19 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--bar-bg);
     padding: 4px 14px;
     border-radius: 20px;
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--ink);
     margin: 0 auto 10px auto;
     width: fit-content;
     letter-spacing: 0.5px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--bar-border);
 }
 
 .deck-status-bar strong {
-    color: #ffb300;
+    color: var(--deck-count-color);
     margin-left: 5px;
     font-size: 0.95rem;
 }
@@ -261,8 +273,8 @@ body {
 }
 
 .pile {
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px dashed rgba(255, 255, 255, 0.3);
+    background: var(--pile-bg);
+    border: 2px dashed var(--pile-border);
     border-radius: 8px;
     position: relative;
     display: flex;
@@ -274,12 +286,12 @@ body {
     cursor: pointer;
 }
 
-.pile.corner { background: rgba(0, 0, 0, 0.15); }
+.pile.corner { background: var(--pile-corner-bg); }
 .pile-label { font-size: 2rem; font-weight: bold; opacity: 0.2; position: absolute; }
 
 #center-deck, .center-deck {
-    background: rgba(0, 0, 0, 0.15);
-    border: 2px dashed rgba(255, 255, 255, 0.2);
+    background: var(--deck-bg);
+    border: 2px dashed var(--deck-border);
     border-radius: 8px;
     display: flex;
     justify-content: center;
@@ -572,6 +584,42 @@ body[data-theme="royal-velvet"] {
     --card-stripe-1: #52525b;
     --card-stripe-2: #a1a1aa;
     --card-accent: #52525b;
+}
+
+body[data-theme="glacier"] {
+    --page-bg: #123049;
+    --table-bg: #cfe0f2;
+    --table-pattern: radial-gradient(circle at center, #e9f3fd 0%, #a9c6e6 100%);
+    --card-stripe-1: #1e3a8a;
+    --card-stripe-2: #3b82f6;
+    --card-accent: #1e3a8a;
+    --ink: #1e293b;
+    --pile-bg: rgba(30, 58, 138, 0.08);
+    --pile-border: rgba(30, 58, 138, 0.35);
+    --pile-corner-bg: rgba(30, 58, 138, 0.12);
+    --deck-bg: rgba(30, 58, 138, 0.10);
+    --deck-border: rgba(30, 58, 138, 0.3);
+    --bar-bg: rgba(255, 255, 255, 0.6);
+    --bar-border: rgba(30, 58, 138, 0.15);
+    --deck-count-color: #b45309;
+}
+
+body[data-theme="parchment"] {
+    --page-bg: #4a3b26;
+    --table-bg: #e3d5b8;
+    --table-pattern: radial-gradient(circle at center, #f2e8d2 0%, #c3ac7e 100%);
+    --card-stripe-1: #14532d;
+    --card-stripe-2: #22c55e;
+    --card-accent: #14532d;
+    --ink: #3f2f1d;
+    --pile-bg: rgba(63, 47, 29, 0.08);
+    --pile-border: rgba(63, 47, 29, 0.35);
+    --pile-corner-bg: rgba(63, 47, 29, 0.12);
+    --deck-bg: rgba(63, 47, 29, 0.10);
+    --deck-border: rgba(63, 47, 29, 0.3);
+    --bar-bg: rgba(255, 255, 255, 0.6);
+    --bar-border: rgba(63, 47, 29, 0.15);
+    --deck-count-color: #b45309;
 }
 
 .board-grid {

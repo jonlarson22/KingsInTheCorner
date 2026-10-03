@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kings-corner-v3.6'; 
+const CACHE_NAME = 'kings-corner-v4.0'; 
 
 const ASSETS = [
     './',

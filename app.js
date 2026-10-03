@@ -907,6 +907,22 @@ function checkAITurn() {
     }, 1500);
 }
 
+/**
+ * Whether the bot may relocate a whole pile. The bot has no strategic reason
+ * to shuttle piles between open side spots, and the reverse move is always
+ * legal too, so it loops forever moving the pile back and forth. Corner
+ * placements from the sides are the only sensible relocation (they free a
+ * side spot); piles already in corners stay put.
+ */
+function canBotMovePile(sourceKey, bottomCard, targetKey, targetPile) {
+    const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetKey);
+    const isSourceCorner = ['nw', 'ne', 'se', 'sw'].includes(sourceKey);
+
+    if (targetPile.length === 0 && (!isCorner || isSourceCorner)) return false;
+
+    return isValidMove(bottomCard, targetPile, isCorner);
+}
+
 function executeAIMoves() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     let madeMove = false;
@@ -917,9 +933,8 @@ function executeAIMoves() {
 
         for (const [targetKey, targetPile] of Object.entries(gameState.board)) {
             if (sourceKey === targetKey) continue;
-            const isCorner = ['nw', 'ne', 'se', 'sw'].includes(targetKey);
 
-            if (isValidMove(bottomCard, targetPile, isCorner)) {
+            if (canBotMovePile(sourceKey, bottomCard, targetKey, targetPile)) {
                 saveSnapshot();
                 const cardsToMove = gameState.board[sourceKey].splice(0);
                 gameState.board[targetKey].push(...cardsToMove);
